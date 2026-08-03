@@ -68,6 +68,53 @@ curl -X POST localhost:38081/accounts -H 'content-type: application/json' \
   -d '{"name": "Savings Account", "kind": "asset"}'
 ```
 
+## Settings
+
+Instance-wide presentation settings. These describe the books rather than the
+visitor, so every client — web, desktop, terminal — reads the same answer, and
+changing one changes it for everybody. Nothing here affects the ledger.
+
+### `GET /settings`
+
+Returns the single settings row (handler `get_settings`, backed by `settings_data`).
+
+**Response `200`** — `Settings`:
+
+```json
+{ "book_style": "club" }
+```
+
+`book_style` is `club` or `personal`. It selects the vocabulary a client presents
+with — a club reads "Treasurer's report" and "What we owe", a household reads "Where
+the money went" and "What you owe". It changes no figure, no validation, and no
+stored ledger data, so it is safe to change back at any time.
+
+```sh
+curl localhost:38081/settings
+```
+
+### `PUT /settings`
+
+Updates it (handler `update_settings`). No `where` clause is needed — the table is
+constrained to a single row.
+
+**Request body** (`SettingsPatch`):
+
+```json
+{ "book_style": "personal" }
+```
+
+**Responses:**
+
+- `200 OK` — the updated `Settings`
+- `422 Unprocessable Entity` — any other value for `book_style`, rejected while
+  deserializing before it reaches the database
+
+```sh
+curl -X PUT localhost:38081/settings -H 'content-type: application/json' \
+  -d '{"book_style": "personal"}'
+```
+
 ## Transactions
 
 ### `GET /transactions`

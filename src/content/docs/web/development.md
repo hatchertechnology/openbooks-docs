@@ -11,6 +11,7 @@ From the repo root, use `just`:
 
 ```sh
 just run       # starts postgres, api, and web in the background
+just seed      # loads sample data worth looking at
 just status    # check what's up
 just logs      # follow both api and web logs
 just stop      # stop all three
@@ -37,6 +38,7 @@ once. `.dev/web.pid` holds the process id; both files are gitignored.
 cd openbooks-web
 npm install
 npm run dev
+npm test        # money-path assertions, no framework
 ```
 
 Set `NUXT_PUBLIC_API_BASE` first if the API isn't at the default
@@ -47,49 +49,80 @@ Set `NUXT_PUBLIC_API_BASE` first if the API isn't at the default
 ```
 openbooks-web/
   app/
-    app.vue              # root layout: nav bar + global CSS
-    pages/                # one file per route (file-based routing)
-      index.vue           # Dashboard
-      transactions.vue    # History
-      reports.vue         # Reports
-      accounts.vue        # Categories
+    app.vue                  # shell: skip link, sidebar, page slot
+    error.vue                # 404 / error page, inside the design system
+    assets/css/main.css      # tokens, base, motion, print
+    pages/                   # one file per route (file-based routing)
+      index.vue              # Overview — the period statement
+      record.vue             # Record money
+      activity.vue           # the register
+      statements.vue         # the printable handout
+      categories.vue         # chart of accounts
+      settings.vue           # club or personal
+      accounts/[id].vue      # one account, with a running balance
+    components/              # Ob*.vue, auto-imported by Nuxt
     composables/
-      useApi.ts           # typed wrapper around every API call, + errorText()
-      useMoney.ts         # money(), toCents(), today()
-  nuxt.config.ts          # ssr: false, apiBase runtime config
-  package.json
+      useApi.ts              # typed wrapper around every API call, + errorText()
+      useLedger.ts           # shared read model + legsFor(), the two-legged rule
+      useMoney.ts            # money(), amount(), signed(), toCents()
+      usePeriod.ts           # month / quarter / year, and the URL sync
+      useSkin.ts             # club or personal wording
+      useTheme.ts            # light / dark / system
+  server/plugins/            # direction-contract.ts injects the design contract
+  public/fonts/              # vendored Public Sans + its licence
+  test/money.test.ts         # run with `npm test`
+  nuxt.config.ts             # ssr: false, tailwind, redirects, apiBase
 ```
 
-There's no `components/` directory yet — each page is small enough to be
-self-contained. If a piece of markup starts repeating across pages, that's the
-signal to pull it into `app/components/`, which Nuxt will auto-import without any
-config.
+Components live in `app/components/` and are auto-imported, so a page never imports
+one. They're all prefixed `Ob` to keep them distinct from anything a dependency might
+register.
 
 ## Conventions
 
-- **No accounting vocabulary in the UI.** See [Overview](/openbooks-docs/web/overview/) for the
-  full rule. If you add a field or a screen, name it the way a treasurer would talk
-  about it, not the way a ledger would.
-- **All money is integer cents** on the wire and in state, converted to and from
-  dollars only at the edges (`toCents()` for user input, `money()` for display), in
-  `openbooks-web/app/composables/useMoney.ts`. Don't introduce a float in between.
-- **All API access goes through `useApi()`.** Don't call `$fetch` directly from a
-  page; add a function to `openbooks-web/app/composables/useApi.ts` instead, so the
-  base URL and typing stay in one place.
-- **Styling is one global stylesheet**, in the `<style>` block of
-  `openbooks-web/app/app.vue`. There's no CSS framework and no scoped
-  per-component styles; new markup should reuse the existing classes (`.card`,
-  `.row`, `.tabs`, `.hint`, `.error`/`.ok`, `.amount`, `.in`/`.out`) rather than
-  inventing new ones.
-- **No component library.** Forms use native `<input>`, `<select>`, and `<button>`
-  elements — for example `<input type="date">` for date pickers rather than a
-  date-picker package.
-- **SSR is off** (`ssr: false` in `nuxt.config.ts`). This is a browser-only admin
-  screen that talks straight to the API; keeping SSR off means the API only ever
-  needs to be reachable from the browser, not from the Nuxt server process too.
+- **No accounting vocabulary in the UI.** See
+  [Overview](/openbooks-docs/web/overview/) for the full rule. If you add a field or a
+  screen, name it the way a treasurer would talk about it, not the way a ledger would.
+- **All money is integer cents** on the wire and in state, converted only at the edges
+  (`toCents()` for input, `money()`/`amount()`/`signed()` for display) in
+  `openbooks-web/app/composables/useMoney.ts`. `toCents()` uses **string arithmetic,
+  not a float** — don't reintroduce one, and keep `npm test` passing.
+- **The two-legged rule lives in one function.** `legsFor()` in `useLedger.ts` is the
+  only place that turns a mode plus two accounts into a debit and a credit. The docked
+  record bar, the `/record` route, and the edit dialog all call it.
+- **All API access goes through `useApi()`.** Don't call `$fetch` from a page; add a
+  function there so the base URL and typing stay in one place.
+- **Styling is Tailwind v4 plus a token layer.** There is no `tailwind.config.js` —
+  the semantic tokens (`surface`, `ink`, `ink-muted`, `line`, `accent`, `in`, `out`,
+  and so on) are declared in `app/assets/css/main.css` under `@theme inline`, backed by
+  `--ob-*` custom properties that swap for dark mode. Use the semantic names rather
+  than raw palette values, so light, dark, and print all keep working.
+  - Text tokens are chosen to clear 4.5:1 on `surface`, `canvas` **and** `sunken`. If
+    you add a colour, check it against all three before using it for copy.
+  - `--ob-out-ink` exists because white on the dark theme's salmon `--ob-out` is
+    unreadable; use it for any ink on a danger surface.
+- **No component library.** Native elements where one exists: `<select>`,
+  `<input type="date">`, and `<dialog>` + `showModal()` for the confirm and edit
+  flows, which gives focus trapping, Escape, and the top layer without a dependency.
+  Note that Tailwind's preflight zeroes `margin`, which defeats a native dialog's
+  `margin: auto` centring — the dialogs set `m-auto` back explicitly.
+- **Icons are drawn, not imported.** `ObIcon.vue` holds every glyph on one geometry:
+  24-unit box, 1.6 stroke, round caps and joins. Adding an icon means drawing it to
+  that system. No emoji, no second icon set.
+- **The typeface is vendored.** Public Sans in `public/fonts/`, never a CDN.
+- **SSR is off** (`ssr: false`). This is a browser-only admin screen that talks
+  straight to the API. One consequence to respect: because nothing is server-rendered,
+  the theme is stamped onto `<html>` by a small blocking script in `nuxt.config.ts`
+  before the bundle boots — without it every cold load flashes light at a dark-mode
+  user.
+- **The design direction is recorded in the markup.** `server/plugins/direction-contract.ts`
+  injects an HTML comment as the first child of `<body>`. It states what this surface
+  is and what it refuses; read it before making a visual change, and update it if the
+  direction genuinely changes.
 
 ## After changing anything that touches money in or out
 
-Run `just smoke` from the repo root. It exercises the ledger end to end (it needs
-`jq`) and will fail loudly if something about balances or reports has regressed,
-including changes that only look like they're confined to the UI.
+Run `npm test` in `openbooks-web`, and `just smoke` from the repo root. The smoke test
+exercises the ledger end to end (it needs `jq`) and will fail loudly if something about
+balances or reports has regressed, including changes that only look like they're
+confined to the UI.

@@ -57,6 +57,32 @@ create table entries (
 Each entry is one leg of a transaction: an account and a signed amount.
 Deleting a transaction cascades to its entries.
 
+## `settings`
+
+One row, holding instance-wide presentation settings. Created by
+`migrations/0003_settings.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `boolean` | primary key, `default true` |
+| `book_style` | `text` | `not null`, `default 'club'` |
+
+Two check constraints do the work:
+
+```sql
+constraint settings_is_single_row check (id),
+constraint settings_book_style_known check (book_style in ('club', 'personal'))
+```
+
+The boolean primary key with `check (id)` is the standard single-row trick: the only
+value satisfying both the check and uniqueness is `true`, so the table can never hold
+a second row to disagree with. Valid values live in the constraint rather than in app
+code, for the same reason the balance rule does — the database is the part that cannot
+be bypassed.
+
+`book_style` is presentation only. It selects which vocabulary a client renders and
+touches nothing about the ledger, so flipping it is always safe and always reversible.
+
 ## Money is integer cents
 
 `amount_cents` is a `bigint`. There are no floating-point amounts anywhere in
