@@ -25,7 +25,7 @@ cd openbooks
 just run
 ```
 
-`just run` brings up Postgres on host port 5433, the API on port 38081, and the web UI on
+`just run` brings up Postgres on host port 38083, the API on port 38081, and the web UI on
 port 38080, all in the background. It waits for Postgres to report healthy before the API
 runs its migrations, and installs the web dependencies on first run. Then it hands your
 prompt back and prints what's up.

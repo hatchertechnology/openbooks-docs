@@ -24,6 +24,17 @@ Consult these guides before working on related tasks:
 ## This site's content
 
 Read `README.md` first. Content lives in `src/content/docs/<section>/`, the sidebar
-autogenerates per directory, internal links are root-relative with a trailing slash, and every
-route, flag, keybinding, and column name on these pages must come from the source of the
-component it documents, which is a sibling submodule of the `openbooks` superproject.
+autogenerates per directory, and internal links carry the `/openbooks-docs` base themselves
+with a trailing slash.
+
+Every route, flag, keybinding, port, and column name on these pages must come from the source
+of the component it documents, each of which is a sibling submodule of the `openbooks`
+superproject. Read the code, don't reason from what the page already says.
+
+Anyone working in one of those submodules without this repo checked out beside it is told to
+file an issue here labelled `documentation` rather than let the page go stale. Those are a
+work queue:
+
+```sh
+gh issue list --label documentation
+```

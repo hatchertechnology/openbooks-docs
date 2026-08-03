@@ -33,7 +33,7 @@ run automatically on API startup (`sqlx::migrate!().run(&pool)` in
 If you want to run the API directly instead of through `just`:
 
 ```sh
-docker compose up -d   # postgres on host port 5433
+docker compose up -d   # postgres on host port 38083
 cargo run               # runs migrations, then listens on :38081
 ./smoke.sh              # needs jq
 ```
@@ -49,7 +49,7 @@ both read in `openbooks-api/src/main.rs`:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | `postgres://openbooks:openbooks@localhost:5433/openbooks` | Postgres connection string |
+| `DATABASE_URL` | `postgres://openbooks:openbooks@localhost:38083/openbooks` | Postgres connection string |
 | `BIND_ADDR` | `0.0.0.0:38081` | address the HTTP server binds to |
 
 Every example in this section assumes the default, so requests target

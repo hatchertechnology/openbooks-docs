@@ -50,6 +50,25 @@ absent (not merely disabled) offline. They need `a11y` compiled out because
 ply's `eval()` syncs a live OS accessibility tree and panics without a window,
 so the tests only run with `--no-default-features`.
 
+### Screenshotting a screen
+
+Two environment variables let the app photograph itself, which is the only way to
+check a layout without sitting at the window:
+
+```sh
+OPENBOOKS_VIEW=reports OPENBOOKS_SHOT=/tmp/reports.png cargo run
+```
+
+`OPENBOOKS_VIEW` picks the screen (`home`, `transactions`, `reports`; anything
+else falls back to `home`) and `OPENBOOKS_SHOT` is the PNG to write. The app
+renders about 120 frames so the first sync can land, writes the real framebuffer
+and exits.
+
+Worth doing after any layout change. The headless tests above assert *what* was
+drawn and never how it looks, so they cannot see a heading overlapped by a button
+or a character the bundled font has no glyph for — both of which shipped once and
+were caught only by looking.
+
 ## Pointing it at a different API
 
 The desktop client reads the API base URL from the `OPENBOOKS_API` environment

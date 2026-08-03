@@ -36,7 +36,7 @@ those wrong.
 |---|---|
 | Web UI | <http://localhost:38080> |
 | API | <http://localhost:38081> |
-| Postgres | `localhost:5433` on the host |
+| Postgres | `localhost:38083` on the host |
 
 The API answers `GET /health`, which is what `just status` and the startup waits poll.
 
