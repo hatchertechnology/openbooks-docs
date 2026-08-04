@@ -606,9 +606,6 @@ code {
 
 /* ---------- where it stands ---------- */
 
-.honest {
-	max-width: var(--ob-measure);
-}
 .honest h2 {
 	font-size: var(--ob-text-2xl);
 }
@@ -709,8 +706,12 @@ code {
 	object-fit: cover;
 	object-position: top center;
 }
+/* The forward client rows paired ~4 lines of copy against this tall a crop and
+   left dead space beneath the text. 16/9 keeps the app's own header and the
+   top of the content (balances, populated report rows) without growing taller
+   than the copy beside it. */
 .client__frame .shot img {
-	aspect-ratio: 16 / 10;
+	aspect-ratio: 16 / 9;
 	object-fit: cover;
 	object-position: top center;
 }
@@ -779,6 +780,53 @@ code {
 	padding-top: var(--ob-space-2);
 }
 
+/* The desktop-app row had four lines of copy against a tall screenshot and
+   ~200px of dead space beneath them. This is the row's own subject, so it
+   fills that space with the offline cache facts rather than padding. Close
+   to the .slip precedent (hairline rows, label/value pairs) but the label
+   here matches the figure strip's uppercase caption treatment instead of
+   .slip's sentence-case one. */
+.offline {
+	margin: var(--ob-space-5) 0 0;
+	padding-top: var(--ob-space-4);
+	border-top: 1px solid var(--ob-border);
+}
+.offline__row {
+	display: grid;
+	grid-template-columns: 6.5rem minmax(0, 1fr);
+	align-items: baseline;
+	gap: var(--ob-space-4);
+	padding: var(--ob-space-2) 0;
+	border-bottom: 1px solid var(--ob-border);
+}
+.offline__row:last-child {
+	border-bottom: 0;
+}
+.offline__row dt {
+	margin: 0;
+	font-size: var(--ob-text-xs);
+	color: var(--ob-text-3);
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+}
+.offline__row dd {
+	margin: 0;
+	font-size: var(--ob-text-sm);
+	color: var(--ob-text);
+}
+
+/* "Where it stands" left its right ~40% empty since it never grew a second
+   column. Heading and lead on the left, the two items and links on the
+   right, collapsing back to one column in the 60rem media block below. */
+.honest {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: var(--ob-space-8);
+	align-items: start;
+}
+.honest__intro p {
+	max-width: 40ch;
+}
 
 /* ---------- narrower ---------- */
 
@@ -864,7 +912,8 @@ code {
 	.hero,
 	.client,
 	.client--reverse,
-	.install {
+	.install,
+	.honest {
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--ob-space-6);
 	}

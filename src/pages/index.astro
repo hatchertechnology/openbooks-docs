@@ -307,6 +307,28 @@ const tracks = [
 							delete control is absent, not merely disabled.
 						</p>
 						<a class="link" href={`${base}/use/desktop/`}>The desktop app</a>
+						<dl class="offline" aria-label="Working offline">
+							<div class="offline__row">
+								<dt>Cache file</dt>
+								<dd>snapshot.json, in the OS app-data directory</dd>
+							</div>
+							<div class="offline__row">
+								<dt>Cached</dt>
+								<dd>Accounts, transactions, balances, and both reports</dd>
+							</div>
+							<div class="offline__row">
+								<dt>Written</dt>
+								<dd>After each sync that completes online</dd>
+							</div>
+							<div class="offline__row">
+								<dt>Read</dt>
+								<dd>Once, at startup, before the first frame</dd>
+							</div>
+							<div class="offline__row">
+								<dt>Offline</dt>
+								<dd>Recording and deleting are removed, not disabled</dd>
+							</div>
+						</dl>
 					</div>
 					<figure class="client__frame">
 						<div class="shot">
@@ -366,7 +388,7 @@ const tracks = [
 							The API mounts a Model Context Protocol server at <code>/mcp</code> beside its HTTP
 							routes, and every tool delegates to the same functions the handlers call. Add a
 							report and the agent interface follows for free. Each result carries the same
-							payload twice — once as text for the model to read, and once as
+							payload twice — once as text for the model to read, and once as{' '}
 							<code>structuredContent</code>, shown here.
 						</p>
 						<a class="link" href={`${base}/dev/mcp/`}>MCP server</a>
@@ -464,27 +486,31 @@ just user-add you@example.com`}</code></pre>
 
 			<section class="section" aria-labelledby="honest">
 				<div class="honest">
-					<h2 id="honest">Where it stands</h2>
-					<p>
-						A working proof of concept for a family or a club, not a product. Two things are worth
-						knowing before you read further.
-					</p>
-					<ul>
-						<li>
-							<b>Authentication is required.</b> The web app uses a session cookie; every other
-							client sends a bearer token. Users are created with{' '}
-							<code>just user-add</code>, never over HTTP.
-						</li>
-						<li>
-							<b>There is deliberately no RBAC.</b> Any authenticated user can do anything any
-							other can. For one household or one club treasury that is the intended design, not a
-							gap.
-						</li>
-					</ul>
-					<p class="honest__links">
-						<a class="link" href={`${base}/dev/auth/`}>How authentication works</a>
-						<a class="link" href={`${base}/server/users-and-tokens/`}>Users and tokens</a>
-					</p>
+					<div class="honest__intro">
+						<h2 id="honest">Where it stands</h2>
+						<p>
+							A working proof of concept for a family or a club, not a product. Two things are
+							worth knowing before you read further.
+						</p>
+					</div>
+					<div class="honest__detail">
+						<ul>
+							<li>
+								<b>Authentication is required.</b> The web app uses a session cookie; every other
+								client sends a bearer token. Users are created with{' '}
+								<code>just user-add</code>, never over HTTP.
+							</li>
+							<li>
+								<b>There is deliberately no RBAC.</b> Any authenticated user can do anything any
+								other can. For one household or one club treasury that is the intended design, not
+								a gap.
+							</li>
+						</ul>
+						<p class="honest__links">
+							<a class="link" href={`${base}/dev/auth/`}>How authentication works</a>
+							<a class="link" href={`${base}/server/users-and-tokens/`}>Users and tokens</a>
+						</p>
+					</div>
 				</div>
 			</section>
 		</main>
