@@ -30,29 +30,41 @@ port 38080, all in the background. It waits for Postgres to report healthy befor
 runs its migrations, and installs the web dependencies on first run. Then it hands your
 prompt back and prints what's up.
 
-Open <http://localhost:38080>. The API seeds a starter chart of accounts on first migration,
-so you can record something straight away.
-
 If you already cloned without `--recurse-submodules`:
 
 ```sh
 git submodule update --init --recursive
 ```
 
-## Load the sample data
+## Load the sample data and sign in
 
 An empty ledger makes for a dull tour. `just seed` posts about 83 transactions across 2025
-and the first half of 2026: monthly dues and hall rent, bake sales and donations, field
+and the first half of 2026 — monthly dues and hall rent, bake sales and donations, field
 trips, insurance, and an invoice bought on credit and partly paid off, so the balance sheet
-has something under what you owe.
+has something under what you owe — and creates the demo user it posts as:
 
 ```sh
 just seed
 ```
 
-Every month and quarter has activity, so the monthly, quarterly, and annual reports all have
-something to show. The amounts are deterministic, so reports are stable between runs.
-Running `seed` again replaces what it posted before rather than doubling it.
+Every route except `GET /health` requires signing in (see
+[Authentication](/openbooks-docs/api/auth/)), so watch the output: on a fresh database,
+`just seed` prints a password for `demo@example.com`. It's shown once and isn't stored
+anywhere, so write it down. Open <http://localhost:38080> and sign in with that email and
+password.
+
+Want your own account instead of the shared demo one?
+
+```sh
+just user-add you@example.com
+```
+
+That also prints a password once, the same way.
+
+Every month and quarter in the seeded data has activity, so the monthly, quarterly, and
+annual reports all have something to show. The amounts are deterministic, so reports are
+stable between runs. Running `seed` again replaces what it posted before rather than
+doubling it.
 
 ## Record your first transaction
 
@@ -60,9 +72,12 @@ In the web UI, choose money in or money out, pick an amount, an account, and a c
 save. The UI never asks you about debits and credits. It composes the two-legged transaction
 for you and posts it to the API.
 
-The same thing from the terminal:
+The same thing from the terminal. Unlike the web app, `openbooks-cli` (and
+`openbooks-desktop`) authenticate with a bearer token rather than a browser
+session, so mint one first:
 
 ```sh
+export OPENBOOKS_TOKEN=$(just mint-token demo@example.com)
 just cli
 ```
 

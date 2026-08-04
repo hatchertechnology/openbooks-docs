@@ -2,7 +2,7 @@
 title: MCP server
 description: The Model Context Protocol server mounted on openbooks-api, its tool list, and how it stays in sync with the HTTP handlers.
 sidebar:
-  order: 5
+  order: 6
 ---
 
 `openbooks-api` mounts an MCP (Model Context Protocol) server on the same
@@ -28,13 +28,38 @@ The endpoint is `POST /mcp` on the same host and port as the rest of the API
 (`http://localhost:38081/mcp` by default). It's request/response only — there's
 no server-initiated stream, so `GET /mcp` returns `405 Method Not Allowed`
 (handler `mcp::no_stream`, wired as `.get(mcp::no_stream)` in
-`openbooks-api/src/main.rs`).
+`openbooks-api/src/lib.rs`).
 
-The repo's `.mcp.json` already points a client at this URL. You can also talk
-to it directly:
+`/mcp` sits behind the same `require_user` middleware as the ledger routes —
+a request with no bearer token gets the `401` described in
+[Authentication](/openbooks-docs/api/auth/), the same as an unauthenticated
+`GET /accounts`. `openbooks-agent/.mcp.json` carries the header:
+
+```json
+{
+  "mcpServers": {
+    "openbooks": {
+      "type": "http",
+      "url": "${OPENBOOKS_MCP_URL:-http://localhost:38081/mcp}",
+      "headers": { "Authorization": "Bearer ${OPENBOOKS_TOKEN}" }
+    }
+  }
+}
+```
+
+`OPENBOOKS_TOKEN` has to be set in the environment the MCP client launches
+with — get one with `just mint-token you@example.com`. Phase 4 replaces this
+with discovery: the `401`'s `WWW-Authenticate` challenge already points at a
+`.well-known/oauth-protected-resource` metadata document, but that document
+doesn't exist until then, so a phase 1 client still needs `OPENBOOKS_TOKEN`
+configured out-of-band rather than discovering how to authenticate on its
+own.
+
+Talking to it directly needs the same header:
 
 ```sh
 curl -s localhost:38081/mcp -H 'content-type: application/json' \
+  -H "authorization: Bearer $OPENBOOKS_TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq -r '.result.tools[].name'
 ```
 
@@ -85,7 +110,8 @@ calling model:
 ### Calling a tool
 
 ```sh
-curl -s localhost:38081/mcp -H 'content-type: application/json' -d '{
+curl -s localhost:38081/mcp -H 'content-type: application/json' \
+  -H "authorization: Bearer $OPENBOOKS_TOKEN" -d '{
   "jsonrpc": "2.0",
   "id": 2,
   "method": "tools/call",
@@ -121,7 +147,7 @@ pretty-printed JSON, since that's what a model reads best) and
 ## Tools delegate to the HTTP handlers' own functions
 
 Every tool in `mcp.rs` calls the same `*_data` function the matching HTTP
-handler calls in `main.rs` — `accounts_data`, `account_balances_data`,
+handler calls in `lib.rs` — `accounts_data`, `account_balances_data`,
 `income_statement_data`, `balance_sheet_data`, `transactions_data`, and
 `create_transaction_data`. None of the query or validation logic is
 reimplemented in `mcp.rs`.

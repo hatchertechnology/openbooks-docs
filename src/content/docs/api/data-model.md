@@ -2,7 +2,7 @@
 title: Data model
 description: Accounts, transactions, and entries — the three tables behind the ledger, and the invariant that keeps them honest.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 The ledger is three tables, defined in `openbooks-api/migrations/0001_init.sql`.
@@ -83,11 +83,44 @@ be bypassed.
 `book_style` is presentation only. It selects which vocabulary a client renders and
 touches nothing about the ledger, so flipping it is always safe and always reversible.
 
+## Authentication tables
+
+`openbooks-api/migrations/0004_auth.sql` adds eight tables and one column, all
+in one migration even though phase 1 only writes four of the tables — a
+single auth migration beats one per phase.
+
+| Table | Written in phase 1? | Purpose |
+|---|---|---|
+| `users` | yes | email (stored lowercased by the app, not `citext`), argon2 `password_hash`, `failed_count` and `retry_after` for login backoff |
+| `sessions` | yes | `id` is the **SHA-256 digest** of the session cookie value, never the raw value, so a database dump yields no usable session; `mfa_complete`, `expires_at` (fixed at creation, not sliding), `last_seen_at` |
+| `oauth_clients` | yes (seeded rows only) | pre-registered first-party clients — `openbooks-cli` and `openbooks-desktop` — inserted by the migration itself |
+| `oauth_tokens` | yes | bearer tokens; `token_hash` is the digest, never the raw token; `kind` is `access` or `refresh` (only `access` is minted in phase 1); `resource` is the token's audience; `revoked_at` |
+| `webauthn_credentials` | no | one row per passkey; unused until phase 2 |
+| `webauthn_challenges` | no | in-flight WebAuthn ceremony state; unused until phase 2 |
+| `oauth_codes` | no | authorization codes for the OAuth code grant; unused until phase 4 |
+| `oauth_device_codes` | no | device-flow codes; unused until phase 4 |
+
+Like `sessions.id` and `oauth_tokens.token_hash`, every credential value this
+schema stores is a digest, not the secret itself — the raw session cookie
+value and the raw bearer token exist only in the response that issues them
+and in the client that holds them, never in the database.
+
+`transactions` also gains a nullable `created_by uuid references users(id)`.
+It's attribution, not authorization, and **nothing writes it in phase 1** —
+existing and seeded transactions predate users, and populating it needs a
+`CurrentUser` threaded into the transaction handler, which is a phase 5
+tidy-up.
+
+See [Authentication](/openbooks-docs/api/auth/) for what actually happens
+with `users`, `sessions`, and `oauth_tokens` — login, backoff, sessions
+expiring on a fixed horizon, and tokens being revoked wholesale on a password
+change.
+
 ## Money is integer cents
 
 `amount_cents` is a `bigint`. There are no floating-point amounts anywhere in
 the money path — `$45.00` is stored and moved around as `4500`. The `NewEntry`
-and `Entry` structs in `openbooks-api/src/main.rs` use `i64` for the same
+and `Entry` structs in `openbooks-api/src/lib.rs` use `i64` for the same
 field, so this holds all the way from Postgres to the JSON the API returns.
 
 ## Signed entries: debit positive, credit negative
@@ -132,7 +165,7 @@ that transaction has landed, at commit time.
 
 :::caution
 This trigger is the real gate. The API's own pre-check in
-`create_transaction_data` (`openbooks-api/src/main.rs`) — rejecting fewer than
+`create_transaction_data` (`openbooks-api/src/lib.rs`) — rejecting fewer than
 two entries or a nonzero sum before it even opens a transaction — exists only
 to return a friendlier `400` message. If the API check ever had a bug, the
 trigger still stops crooked data from landing. Don't move this invariant into

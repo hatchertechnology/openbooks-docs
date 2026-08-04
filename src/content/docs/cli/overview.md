@@ -39,6 +39,27 @@ Run the test suite with:
 cargo test
 ```
 
+## Authenticating
+
+Every request needs a bearer token: `openbooks-cli` reads `OPENBOOKS_TOKEN`
+from the environment and, when set, sends `Authorization: Bearer
+$OPENBOOKS_TOKEN` on every call (`openbooks-cli/src/api.rs`). Get one with:
+
+```bash
+export OPENBOOKS_TOKEN=$(just mint-token you@example.com)
+```
+
+Without it, a request comes back `401` and the CLI reports:
+
+```
+not signed in — export OPENBOOKS_TOKEN=$(just mint-token you@example.com)
+```
+
+Phase 1 has no `auth login` in any client — this is the only way
+`openbooks-cli` gets a credential until phase 3 adds one. See
+[Authentication](/openbooks-docs/api/auth/) for what the token is good for
+and how long it lasts.
+
 ## Reaching the API
 
 Every invocation needs a base URL for `openbooks-api`. It comes from, in order of

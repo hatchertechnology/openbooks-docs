@@ -2,7 +2,7 @@
 title: Reports
 description: The balances, income statement, and balance sheet endpoints, and the sign-flipping rule that makes them readable.
 sidebar:
-  order: 4
+  order: 5
 ---
 
 Three reporting endpoints, all in `openbooks-api/src/main.rs`, all built on one

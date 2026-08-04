@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: What openbooks-api is, how to run it, and its no-auth POC posture.
+description: What openbooks-api is, how to run it, and how it authenticates callers.
 sidebar:
   order: 1
 ---
@@ -44,31 +44,86 @@ what's actually up.
 
 ## Base URL and configuration
 
-The API listens on `0.0.0.0:38081` by default. Two environment variables control it,
-both read in `openbooks-api/src/main.rs`:
+The API listens on `0.0.0.0:38081` by default. These environment variables
+control it:
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `postgres://openbooks:openbooks@localhost:38083/openbooks` | Postgres connection string |
-| `BIND_ADDR` | `0.0.0.0:38081` | address the HTTP server binds to |
+| Variable | Default | Purpose | Read in |
+|---|---|---|---|
+| `DATABASE_URL` | `postgres://openbooks:openbooks@localhost:38083/openbooks` | Postgres connection string | `src/main.rs` |
+| `BIND_ADDR` | `0.0.0.0:38081` | address the HTTP server binds to | `src/main.rs` |
+| `WEB_ORIGIN` | `http://localhost:38080` | the only origin CORS allows to send credentialed requests | `src/lib.rs` |
+| `API_ORIGIN` | `http://localhost:38081` | this API's own canonical URL, used as the token audience and in the `WWW-Authenticate` challenge | `src/auth/mod.rs` |
+| `SESSION_TTL_DAYS` | `30` | how long a fully authenticated session lasts from creation | `src/auth/session.rs` |
 
 Every example in this section assumes the default, so requests target
 `http://localhost:38081`.
 
-## No auth, no RBAC, CORS wide open
+## Authentication is required; there's no RBAC
 
-This is deliberate for the POC, not an oversight. There is no login, no API key, no
-per-user permission model, and the CORS layer is `CorsLayer::permissive()` — any
-origin can call it. The comment in the source is explicit about this:
+Every route except `GET /health` needs a session cookie or a bearer token —
+see [Authentication](/openbooks-docs/api/auth/) for the credential types,
+the `/auth/*` routes, login backoff, and what phase 1 doesn't do yet (no
+second factor, no OAuth). There's no per-user permission model on top of
+that: any authenticated user can read and write the whole ledger. That's
+deliberate, not an oversight — see the project's root `CLAUDE.md`.
+
+## CORS is an explicit allowlist
+
+The CORS layer allows exactly one origin — `WEB_ORIGIN` — with credentials,
+and only the methods the API actually uses:
 
 ```rust
-// ponytail: POC has no auth, so CORS is wide open. Tighten alongside auth.
-.layer(CorsLayer::permissive())
+CorsLayer::new()
+    .allow_origin([origin])
+    .allow_credentials(true)
+    .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+    .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
 ```
 
-Anything that can reach port 38081 can read and write the ledger. Don't put real
-money data behind this API, and don't treat the lack of auth as a bug to fix
-unless you're explicitly asked to.
+The origin is passed as a one-element array rather than a bare value: a bare
+`HeaderValue` becomes `AllowOrigin::exact`, which echoes the configured
+origin on every response without checking the request's `Origin` header at
+all — not actually an allowlist. The array form is `AllowOrigin::list`,
+which does filter, so a request from an unrecognized `Origin` gets no
+`Access-Control-Allow-Origin` header back. CORS governs whether a browser
+lets script *read* a cross-origin response, not whether the request gets
+sent — `SameSite=Lax` on the session cookie is what actually protects
+state-changing routes from another site.
+
+## Admin commands
+
+User accounts are created and managed on the API binary directly, never over
+HTTP — anyone who can run these already has `DATABASE_URL` and could reach
+the database directly, so there's no privileged endpoint to protect with a
+role this system deliberately doesn't have. Verbatim from `admin::USAGE`:
+
+```
+openbooks-api                                     serve
+openbooks-api user add <email> [--password -]     create a user, print a password
+openbooks-api user list                           email, passkey count, last seen
+openbooks-api user passwd <email> [--password -]  reset a password
+openbooks-api user rm <email>                     delete, cascading sessions/tokens
+openbooks-api mint-token <email> [--label <name>] a token for scripts and clients
+```
+
+`user add` and `user passwd` print a generated password once — it's not
+stored anywhere and can't be shown again, so write it down or pipe a
+password in with `--password -` (reads one line from stdin). `user passwd`
+and `user rm` (via the cascading foreign keys in `0004_auth.sql`) end every
+existing session and revoke every token for that user, the same as a
+self-service password change through `POST /auth/password`.
+
+From the repo root, `just` wraps these so you don't need `DATABASE_URL` set
+by hand:
+
+```sh
+just user-add you@example.com   # user add
+just users                      # user list
+just mint-token you@example.com # mint-token
+```
+
+See [Running the stack](/openbooks-docs/start/running/) for the full recipe
+list.
 
 ## Error shape
 

@@ -27,8 +27,15 @@ those wrong.
 | `just status` | what's up right now |
 | `just logs` | follow the API and web logs |
 | `just smoke` | check the ledger and the reports end to end, needs `jq` |
+| `just test` | run the API's test suite against a running Postgres |
+| `just user-add <email>` | create a user and print a generated password once |
+| `just users` | list who can sign in, with passkey count and last seen |
+| `just mint-token <email>` | print a bearer token for scripts and for `openbooks-cli`/`openbooks-desktop` before they log in |
 
-`just` on its own lists them.
+`just` on its own lists them. `user-add`, `users`, and `mint-token` wrap the
+API binary's own admin verbs, which need `DATABASE_URL` — see
+[Authentication](/openbooks-docs/api/auth/) and
+[API overview](/openbooks-docs/api/overview/#admin-commands).
 
 ## Ports
 
@@ -39,6 +46,17 @@ those wrong.
 | Postgres | `localhost:38083` on the host |
 
 The API answers `GET /health`, which is what `just status` and the startup waits poll.
+
+## Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WEB_ORIGIN` | `http://localhost:38080` | the only origin the API's CORS layer allows |
+| `API_ORIGIN` | `http://localhost:38081` | the API's own URL, used as the token audience and in the 401 challenge |
+| `SESSION_TTL_DAYS` | `30` | how long a signed-in web session lasts |
+| `OPENBOOKS_TOKEN` | none | the bearer token `openbooks-cli`, `openbooks-desktop`, and `/mcp` read for authentication |
+
+See [Authentication](/openbooks-docs/api/auth/) for what each one governs.
 
 ## Logs
 

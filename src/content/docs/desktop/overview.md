@@ -19,6 +19,16 @@ target through a separate tool called `plyx` (`cargo install plyx`): `plyx web`,
 `plyx apk`, `plyx ios`. Per the project README, only the desktop build has been
 tried so far — treat the other targets as theoretically reachable, not verified.
 
+## Authenticating
+
+Like `openbooks-cli`, the desktop client reads a bearer token from
+`OPENBOOKS_TOKEN` (`openbooks-desktop/src/client.rs`) and sends it as
+`Authorization: Bearer $OPENBOOKS_TOKEN` on every request; without it, every
+call gets a `401`. Get a token with `just mint-token you@example.com` before
+running `just desktop`. There's no `auth login` screen in phase 1 — see
+[Authentication](/openbooks-docs/api/auth/) — so this is the only way in
+until phase 3.
+
 ## Stack
 
 - **Rust**, edition 2021.

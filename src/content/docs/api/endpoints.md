@@ -2,18 +2,38 @@
 title: Endpoints
 description: Every HTTP route on openbooks-api — methods, params, request and response bodies, and status codes.
 sidebar:
-  order: 3
+  order: 4
 ---
 
-All routes are defined in the router in `openbooks-api/src/main.rs`. Report
+All routes are defined in the router in `openbooks-api/src/lib.rs`. Report
 endpoints (`/reports/*`) have their own page: see [Reports](/openbooks-docs/api/reports/).
 The MCP endpoint (`/mcp`) is covered in [MCP server](/openbooks-docs/api/mcp/).
+
+## Authentication
+
+Every route below, and every report and MCP route, requires a session cookie
+or a bearer token — only `GET /health` is open. A request with neither, or
+with an expired or invalid one, gets:
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="http://localhost:38081/.well-known/oauth-protected-resource"
+```
+
+```json
+{ "error": "authentication required" }
+```
+
+See [Authentication](/openbooks-docs/api/auth/) for the credential types, the
+`/auth/*` routes themselves, and what that challenge header does and doesn't
+mean in phase 1.
 
 ## Health
 
 ### `GET /health`
 
-Returns the plain text `ok` with status `200`. No params, no body.
+Returns the plain text `ok` with status `200`. No params, no body, and no
+authentication — the one open route.
 
 ```sh
 curl localhost:38081/health
