@@ -49,14 +49,32 @@ All six are implemented in `openbooks-api/src/oauth/`; see
 [Authentication](/openbooks-docs/dev/auth/) for the protocol they implement —
 PKCE, the loopback rule, refresh rotation — this page is just the wire shape.
 
-Every response from this module, success or error, carries
-`Cache-Control: no-store`. Every **error** response — from any of the six
-routes — uses the OAuth error shape, `{"error", "error_description"}`, which
-is distinct from the ledger's plain `{"error"}`:
+`Cache-Control: no-store` is on every error this module raises (`OAuthError`),
+and on the success responses that carry a token or a code — both branches of
+`POST /oauth/authorize/approve` and `token::no_store`'s responses from
+`POST /oauth/token`. It is **not** on every response: `GET /oauth/authorize`'s
+303 sets only `Location`, and `GET /oauth/client_info`'s 200 is a bare `Json`
+with nothing to protect from a cache.
+
+Most error responses from these six routes use the OAuth error shape,
+`{"error", "error_description"}`, which is distinct from the ledger's plain
+`{"error"}`:
 
 ```json
 { "error": "invalid_grant", "error_description": "that refresh token is not redeemable" }
 ```
+
+but this shape comes from `OAuthError` specifically, and two other layers can
+answer first with something else. An unauthenticated
+`POST /oauth/authorize/approve` or `GET /oauth/client_info` never reaches
+`OAuthError` at all — the `require_user` middleware in front of the session
+tier rejects it first, with the plain `{"error": "authentication required"}`
+shape and no `error_description`. And axum's own extractors can reject before
+either handler or middleware runs: a missing required query parameter on
+`GET /oauth/authorize` is a plain-text `400 Failed to deserialize query
+string`, a missing `grant_type` on `POST /oauth/token` is a plain-text `422`,
+and a `POST /oauth/token` sent with the wrong `Content-Type` is a plain-text
+`415`.
 
 ### `GET /.well-known/oauth-protected-resource`
 

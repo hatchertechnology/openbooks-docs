@@ -66,6 +66,17 @@ Couldn't open a browser. Open this yourself:
 http://localhost:38081/oauth/authorize?response_type=code&client_id=openbooks-cli&...
 ```
 
+**`--api`/`OPENBOOKS_API` must match the API's own canonical origin exactly,**
+or the browser shows a raw `400 invalid_request` instead of a sign-in page,
+and the terminal sits waiting on the loopback listener until you Ctrl-C it —
+there is no timeout. The login URL's `resource` parameter is checked against
+`canonical_resource()` (`WEB_ORIGIN`'s API-side counterpart, default
+`http://localhost:38081`), and that check is exact. Concretely,
+`OPENBOOKS_API=http://127.0.0.1:38081 openbooks-cli auth login` fails against
+a default-configured API even though `127.0.0.1` and `localhost` reach the
+same server — the audience check treats them as different origins. Use
+whichever hostname the API was actually started with.
+
 ### `auth logout`
 
 Deletes the stored credentials file. Does not call the API — this only

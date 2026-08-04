@@ -277,6 +277,13 @@ Every response from `/oauth/token` — success or error — carries
 `Cache-Control: no-store` (RFC 6749 §5.1): a token must never end up in a
 shared or browser cache.
 
+That table is the vocabulary `OAuthError` itself can produce; two more status
+codes reach the caller before `token()` ever runs, from axum's own `Form`
+extractor, and they are plain text, not the OAuth error shape: a
+`POST /oauth/token` with no `grant_type` field at all is `422 Unprocessable
+Entity`, and one sent with a `Content-Type` other than
+`application/x-www-form-urlencoded` is `415 Unsupported Media Type`.
+
 On success:
 
 ```json
