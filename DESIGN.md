@@ -126,7 +126,8 @@ before-paint script on the landing page reads it so there is no flash of the wro
 - Self-hosted variable fonts (Geist, Geist Mono) for text and figures; no external font requests.
 - Hairline 1px borders and flat surfaces; no gradients, no illustration, no iconography beyond a
   handful of inline stroke SVGs (nav mark, theme toggle, GitHub mark, chevrons).
-- Exactly one authored motion moment on the entire site (see Do's and Don'ts).
+- Exactly two authored motion moments on the entire site, both on the landing page: the first
+  viewport's entry and the proof section's three steps (see Do's and Don'ts).
 - Light is the declared default theme, on the stated reasoning that these pages are as likely
   read at a desk in daylight as at night.
 
@@ -430,11 +431,29 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
   Tailwind/Astro docs, Supabase/Bun craft level). A future contributor should not read the
   restraint here as an oversight and "fix" it by adding an invented visual flourish, a second
   accent color, or a decorative illustration system.
-- **Do** keep the one authored motion moment as the only scripted animation: the proof section's
-  three steps settling into place in sequence, once, on scroll into view via
-  `IntersectionObserver`, guarded by `prefers-reduced-motion: reduce`. No other element on
-  either surface animates on scroll, load, or hover beyond simple `0.15–0.18s` color/transform
-  transitions.
+- **Do** keep the two authored motion moments as the only scripted animation on either surface,
+  and add no third. No other element animates on scroll, load, or hover beyond simple
+  `0.15–0.18s` color/transform transitions.
+  1. **The first viewport, on load.** The hero's five text children arrive on a `55ms` stagger
+     (`arrive`: opacity `0.4`→`1`, `translateY(8px)`→`0`, `blur(2px)`→none), the rule above the
+     figure strip draws itself left-to-right as a background image rather than fading its border
+     (`rule-in`), the product frame seats out of `rotateY(-3.5deg) rotateX(1.5deg) scale(0.965)`
+     over `0.9s` (`seat`), one white specular pass crosses the glass and leaves nothing behind
+     (`sweep`), and the four seeded totals count up to the exact strings already printed in the
+     markup. Afterwards the frame keeps a scroll-linked drift of `-32px` over the first `70vh`
+     (`parallax`, `animation-timeline: scroll(root block)`, `@supports`-gated) and a
+     pointer-tracked tilt capped at `1.5deg` on fine pointers only.
+  2. **The proof section, on scroll into view.** Its three steps settle into place in sequence,
+     once, via `IntersectionObserver`.
+
+  Both are gated on `prefers-reduced-motion: reduce`. The hero's entry is additionally gated by a
+  single `data-hero-motion` attribute the before-paint head script sets, which is what makes the
+  degradation total: with reduced motion, with no JS, or if the script throws, the hero renders
+  exactly as it did before any of this existed — real border above the figure strip, no sweep
+  pseudo-element, no transforms, the real seeded figures. Verified by removing the attribute on
+  the live page. The scroll parallax is the one piece gated only by the media query, because it
+  is pure CSS and needs no script to be correct. That is the rule for anything added here: the enhancement is allowed to
+  be the reason the page feels alive, never the reason a fact becomes readable.
 - **Do** append new plain rules to `landing.css` above the `@media` blocks, never after them.
   This stylesheet's rule is that every top-level media query stays at the end of the file (the
   Media-Queries-Last Rule); an appended fix after that point silently loses to a narrow-viewport
@@ -489,7 +508,9 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
   literal, because promoting a second saturated color to the token layer would contradict the
   One Accent Rule — it is a deliberate one-off, used nowhere else on the site. The mechanical
   detector that flags undocumented palette entries catches all four; this bullet is the answer
-  to that flag.
+  to that flag. A fifth literal, the `#ffffff` inside the hero sweep's `color-mix`, is not a
+  palette entry at all: it is light on glass, white in both themes for the same reason a
+  reflection is, and it exists only for the `1.1s` the sweep runs. The detector does not flag it.
 - **Three mono font sizes sit off the documented type ramp (`--ob-text-xs` at `0.75rem` is the
   smallest named step) by intent.** `0.8rem` on the install command block (`.code--install`) sizes
   up slightly from the `0.78rem` panel default because it is a real command meant to be read and

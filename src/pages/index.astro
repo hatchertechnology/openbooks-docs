@@ -92,6 +92,14 @@ const tracks = [
 							: 'light';
 				document.documentElement.dataset.theme = theme;
 			})();
+
+			// Arm the hero's entry before first paint, or the frame and the figures
+			// show their final state for a frame and then animate away from it. The
+			// attribute is the only gate: without it, and under reduced motion, the
+			// hero renders exactly as it did before any of this existed.
+			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+				document.documentElement.dataset.heroMotion = '';
+			}
 		</script>
 	</head>
 	<body>
@@ -182,7 +190,7 @@ const tracks = [
 		</header>
 
 		<main id="main">
-			<section class="hero">
+			<section class="hero" data-hero>
 				<div class="hero__text">
 					<h1>Keep the books for a club without learning what a debit is.</h1>
 					<p class="hero__lede">
@@ -565,7 +573,88 @@ just user-add you@example.com`}</code></pre>
 				} catch {}
 			});
 
-			// The one authored motion moment: the proof section's three steps settle in
+			// The first of two authored motion moments: the hero's copy and figures
+			// resolve while the product frame seats itself. Everything below is gated
+			// on the same attribute the head script sets, so reduced motion and a
+			// scripting failure both land on the static hero.
+			const hero = document.querySelector('[data-hero]');
+			if (hero && 'heroMotion' in document.documentElement.dataset) {
+				// The totals are real seeded figures printed in the markup; the roll
+				// counts up to whatever string is already there and finishes by putting
+				// that exact string back, so the page can never round or reformat what
+				// the sample books actually say.
+				const rolls = [...hero.querySelectorAll('.figures dd')].map((el) => {
+					const final = el.textContent.trim();
+					const digits = (final.split('.')[1] ?? '').length;
+					return {
+						el,
+						final,
+						digits,
+						currency: final.startsWith('$'),
+						target: Number(final.replace(/[$,]/g, '')),
+					};
+				});
+
+				// Pin each pair at its final width first: a smaller intermediate number
+				// is a narrower one, and the strip would reflow on every frame.
+				for (const { el } of rolls) {
+					const pair = el.parentElement;
+					pair.style.minWidth = `${Math.ceil(pair.getBoundingClientRect().width)}px`;
+				}
+
+				const format = (roll, value) =>
+					(roll.currency ? '$' : '') +
+					value.toLocaleString('en-US', {
+						minimumFractionDigits: roll.digits,
+						maximumFractionDigits: roll.digits,
+					});
+
+				// Starts as the figure strip itself arrives (4th child, 55ms stagger),
+				// and eases out on the same curve as the CSS so the two read as one
+				// gesture rather than two animations that happen to overlap.
+				const ROLL_START = 165;
+				const ROLL_MS = 950;
+				const start = performance.now() + ROLL_START;
+				const tick = (now) => {
+					const t = Math.min(1, Math.max(0, (now - start) / ROLL_MS));
+					const eased = 1 - Math.pow(1 - t, 3);
+					for (const roll of rolls) {
+						roll.el.textContent = t === 1 ? roll.final : format(roll, roll.target * eased);
+					}
+					if (t < 1) requestAnimationFrame(tick);
+				};
+				requestAnimationFrame(tick);
+
+				// The pointer tilt, on fine pointers only. Capped at 1.5deg: enough for
+				// the highlight and the shadow to shift, not enough to read as a toy.
+				if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+					const MAX = 1.5;
+					let queued = null;
+					hero.addEventListener('pointermove', (event) => {
+						if (queued !== null) return;
+						queued = requestAnimationFrame(() => {
+							queued = null;
+							const box = hero.getBoundingClientRect();
+							const x = (event.clientX - box.left) / box.width - 0.5;
+							const y = (event.clientY - box.top) / box.height - 0.5;
+							hero.dataset.tilting = '';
+							hero.style.setProperty('--tilt-y', `${(x * 2 * MAX).toFixed(2)}deg`);
+							hero.style.setProperty('--tilt-x', `${(-y * 2 * MAX).toFixed(2)}deg`);
+						});
+					});
+					hero.addEventListener('pointerleave', () => {
+						if (queued !== null) cancelAnimationFrame(queued);
+						queued = null;
+						// Drop the flag first so the transition is back in force, then
+						// zero the angles: the frame eases home instead of snapping.
+						delete hero.dataset.tilting;
+						hero.style.setProperty('--tilt-y', '0deg');
+						hero.style.setProperty('--tilt-x', '0deg');
+					});
+				}
+			}
+
+			// The second authored moment: the proof section's three steps settle in
 			// sequence, once, from an already-visible default.
 			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
 				const steps = document.querySelectorAll('.proof__step');

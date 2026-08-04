@@ -886,6 +886,167 @@ code {
 	grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
 }
 
+/* ---------- the first viewport's authored moment ----------
+   The second and last scripted moment on the site (the proof section's three
+   steps are the other). Everything here is additive: with no JS and with
+   reduced motion the hero renders in its final state, and the figure strip
+   already carries the real seeded totals as text, so nothing waits on a
+   counter to become readable.
+
+   Two techniques, one moment. The copy and the figures resolve in sequence
+   while the product frame settles into depth, and the frame stays live
+   afterwards on scroll. They are deliberately layered on different elements:
+   .hero__frame owns the scroll parallax, .shot--hero owns the pointer tilt, so
+   neither transform can clobber the other. */
+
+[data-hero-motion] .hero .hero__text > * {
+	animation: arrive 0.6s var(--ob-ease) both;
+	animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes arrive {
+	from {
+		opacity: 0.4;
+		transform: translateY(8px);
+		filter: blur(2px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+		filter: none;
+	}
+}
+[data-hero-motion] .hero .hero__text > :nth-child(2) {
+	--i: 1;
+}
+[data-hero-motion] .hero .hero__text > :nth-child(3) {
+	--i: 2;
+}
+[data-hero-motion] .hero .hero__text > :nth-child(4) {
+	--i: 3;
+}
+[data-hero-motion] .hero .hero__text > :nth-child(5) {
+	--i: 4;
+}
+
+/* The rule above the figure strip draws itself rather than fading, so the strip
+   reads as being ruled off once the totals below it have landed. */
+[data-hero-motion] .hero .figures {
+	border-top-color: transparent;
+	background-image: linear-gradient(var(--ob-border), var(--ob-border));
+	background-repeat: no-repeat;
+	background-position: top left;
+	background-size: 0 1px;
+	animation:
+		arrive 0.6s var(--ob-ease) both,
+		rule-in 0.7s var(--ob-ease) both;
+	animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes rule-in {
+	to {
+		background-size: 100% 1px;
+	}
+}
+
+/* The frame settles out of a shallow rotation and a slightly smaller scale: the
+   window swinging into place rather than fading in. The perspective sits on the
+   frame so the child's tilt shares the same vanishing point. */
+.hero__frame {
+	perspective: 1600px;
+}
+/* `backwards`, not `both`, and that is the whole reason the tilt below works: a
+   forwards fill would keep asserting this animation's `transform: none` after it
+   finished, outranking the ordinary declaration the pointer tilt writes into,
+   and the frame would never move again. Backwards still holds the `from` state
+   through the delay, which is all this needs. */
+[data-hero-motion] .hero .shot--hero {
+	animation: seat 0.9s var(--ob-ease) backwards;
+	animation-delay: 80ms;
+}
+@keyframes seat {
+	from {
+		opacity: 0.35;
+		transform: perspective(1600px) rotateY(-3.5deg) rotateX(1.5deg) scale(0.965);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* One specular pass across the glass as it seats, then gone. Masked to the
+   frame's own radius so it reads as light on the surface, not a band drawn over
+   it. This is the frame's own effect, not glass-as-decoration: it fires once
+   and leaves no residue. */
+.shot--hero {
+	position: relative;
+}
+[data-hero-motion] .hero .shot--hero::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: var(--ob-radius-sm);
+	pointer-events: none;
+	background: linear-gradient(
+		105deg,
+		transparent 38%,
+		color-mix(in srgb, #ffffff 26%, transparent) 50%,
+		transparent 62%
+	);
+	background-size: 260% 100%;
+	animation: sweep 1.1s var(--ob-ease) 0.22s both;
+}
+@keyframes sweep {
+	from {
+		background-position: -130% 0;
+		opacity: 0;
+	}
+	18% {
+		opacity: 1;
+	}
+	to {
+		background-position: 130% 0;
+		opacity: 0;
+	}
+}
+
+/* The pointer tilt: fine pointers only, capped at 1.5deg, driven by vars the
+   script writes. It composes with nothing else on this element, because the
+   seating animation has `both` and is finished by the time a pointer arrives —
+   and if it hasn't, the animation wins, which is the correct precedence. */
+@media (hover: hover) and (pointer: fine) {
+	.shot--hero {
+		transform: rotateY(var(--tilt-y, 0deg)) rotateX(var(--tilt-x, 0deg));
+		transform-style: preserve-3d;
+		transition: transform 0.35s var(--ob-ease);
+	}
+	.hero[data-tilting] .shot--hero {
+		/* While the pointer is moving, follow it directly rather than easing to
+		   each sample, or the tilt lags behind the cursor by a third of a second. */
+		transition: none;
+	}
+}
+
+/* The frame keeps moving after the moment ends: it drifts up slightly faster
+   than the page for the first screen of scroll, which is what sells it as a
+   window set back from the text rather than an image pinned beside it. Upward
+   by intent — drifting down would push the frame's shadow across the hairline
+   that opens the proof section. CSS-only, and the @supports guard leaves
+   browsers without scroll timelines with a static frame that was never wrong. */
+@supports (animation-timeline: scroll()) {
+	@media (prefers-reduced-motion: no-preference) {
+		.hero__frame {
+			animation: parallax linear both;
+			animation-timeline: scroll(root block);
+			animation-range: 0 70vh;
+		}
+		@keyframes parallax {
+			to {
+				transform: translateY(-32px);
+			}
+		}
+	}
+}
+
 /* ---------- narrower viewports: these must stay last ---------- */
 
 @media (prefers-reduced-motion: reduce) {
