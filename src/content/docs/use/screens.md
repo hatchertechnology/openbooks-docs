@@ -14,6 +14,16 @@ account, the total on hand, and anything still owed), so the numbers a treasurer
 checks most often are on screen whatever route they're on. Account names in it link
 to the drill-down.
 
+Below `lg` the rail collapses behind a 44×44 menu button in a sticky top bar that also
+shows what's on hand and a **Record** button straight to `/record` — recording is the
+most frequent act on a phone, and it should not require scrolling past a statement to
+reach. The rail is a disclosure rather than a modal: opening it moves focus to the
+first section, and Escape closes it and returns focus to the button that opened it.
+
+Touch targets meet the 44px floor under `@media (pointer: coarse)` rather than at a
+breakpoint, so a touchscreen laptop gets them at any width while a mouse keeps the
+denser desktop spacing.
+
 ## Overview (`/`)
 
 File: `openbooks-web/app/pages/index.vue`.
@@ -37,6 +47,12 @@ to bottom:
 
 A brand-new book gets a designed first-run panel here instead of a screen of zeroes.
 See [Reports](/openbooks-docs/use/statements/#first-run) for what it shows and why.
+
+When the figures can't be fetched — the API restarting, a dropped connection — the
+three figures read `—` and "figures not in yet" rather than `$0.00`, and the statement
+says which period it couldn't add up and offers **Try again**. A zero is a claim about
+your books; a dash is not, and the difference matters when the next step is printing
+the page for a meeting.
 
 API calls on load: `GET /accounts`, `GET /reports/balances`,
 `GET /reports/income-statement` for the chosen period, and `GET /transactions` for

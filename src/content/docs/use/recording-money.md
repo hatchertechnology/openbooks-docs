@@ -22,9 +22,11 @@ Use this when the club receives money: dues, a donation, bake sale proceeds.
 - **Amount** — a positive dollar amount, e.g. `25.00`. This is a text input with
   `inputmode="decimal"`, not `type="number"`, so `1,234.56` and `$42.50` are both
   accepted.
-- **Into** — which asset account ("where money sits") received it. If there's only
-  one asset account, the app picks it for you automatically.
-- **Where from** — an income account.
+- **Into** — which asset account ("where money sits") received it, prompting "Choose an
+  account…". If there's only one asset account, the app picks it for you automatically.
+- **Where from** — an income account, prompting "Choose a category…". The two dropdowns
+  never share a prompt: side by side they would otherwise both say "Choose…", and
+  transposing them posts a balanced entry that is silently wrong.
 - **Description** — a short note, e.g. "March dues — Smith family".
 
 ### Money out
@@ -40,13 +42,32 @@ Use this when the club spends money: food, supplies, a bill.
 
 Use this when money moves between two of the club's own accounts.
 
-- **Out of** — the source asset account.
-- **Into** — the destination asset account. The dropdown excludes whichever account
-  is already selected as the source, and the form refuses a transfer where both sides
-  are the same account.
+- **Out of** — the source asset account, prompting "Choose an account…".
+- **Into** — the destination asset account, prompting "Choose another account…" since
+  both sides list accounts here. The dropdown excludes whichever account is already
+  selected as the source, and the form refuses a transfer where both sides are the
+  same account.
+
+The line beside the mode switch changes too: a transfer is the only entry that moves no
+money in or out, so it says so rather than repeating the register's general lead.
 
 After a successful record the amount and description clear but the mode and both
-account choices stay put, because the next entry is usually more of the same.
+account choices stay put, because the next entry is usually more of the same — and
+focus returns to **Amount**, so a stack of receipts is one hand on the keyboard rather
+than a mouse trip per entry.
+
+## Keyboard
+
+Wherever the form is on screen — docked on the Overview or stacked on `/record`:
+
+| Key | What it does |
+|---|---|
+| `R` | Jump to the Amount field and select what's in it |
+| `Cmd/Ctrl` + `K` | The same, for anyone whose muscle memory says palette |
+| `Cmd/Ctrl` + `Enter` | Record, from whichever field you're in |
+
+`R` is deliberately bare, so it is ignored while you are typing in any field — a
+description containing an "r" stays a description.
 
 ## What happens when you hit Record
 
@@ -95,13 +116,28 @@ survives a cents → display → cents round trip. Run it with `npm test`.
 
 ## Validation
 
-Before submitting, the form checks that the amount converts to a positive number of
-cents, the description isn't blank, both accounts are chosen, and a transfer's two
-sides differ. Each failure names the problem and what to do about it.
+Both forms carry `novalidate`, so the browser's own "Please fill out this field"
+bubble never appears. Every check is the app's own, and every failure lands in the
+notice above the fields, where it stays put and is announced to a screen reader:
+
+- a date is chosen — "Pick the date this money moved."
+- the amount converts to a positive number of cents — "Enter an amount greater than
+  zero, like 42.50."
+- the description isn't blank
+- both dropdowns are chosen, named the way the current mode names them — in Money in,
+  "Choose which account the money landed in, and where it came from."
+- a transfer's two sides differ
+
+The `required` attributes stay on the controls so assistive technology still announces
+the fields as required; only the browser's error UI is suppressed. Both the docked bar
+and the edit dialog read these strings from `fieldWords()` and `VALIDATION` in
+`openbooks-web/app/composables/useLedger.ts`, so the two forms cannot drift apart.
 
 Anything the API itself rejects — for instance entries that don't sum to zero, which
 Postgres enforces with a deferred constraint trigger — comes back as an error message
 pulled out of the response by `errorText()` in `useApi.ts` and shown above the form.
+That function keeps the API's own wording, but replaces a transport failure's
+`[GET] "http://…": <no response>` with something a treasurer can act on.
 
 ## Editing an entry
 
