@@ -1,0 +1,112 @@
+/*
+ * Shared identity for the whole site. The landing page at / is a plain Astro
+ * page and everything else is Starlight, so these tokens are the only thing
+ * holding the two together — keep them free of anything Starlight-specific.
+ *
+ * Restrained colour: a neutral ramp plus one accent. The accent is a jade
+ * green, which is the one nod the site makes to the columnar ledger pad.
+ */
+
+:root {
+	--ob-font: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+	--ob-font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+	/* Type scale. Display tops out well under the 6rem ceiling; a docs front
+	   page that shouts at 96px is a landing page cosplaying as a billboard. */
+	--ob-text-xs: 0.75rem;
+	--ob-text-sm: 0.875rem;
+	--ob-text-base: 1rem;
+	--ob-text-lg: 1.125rem;
+	--ob-text-xl: 1.375rem;
+	--ob-text-2xl: 1.75rem;
+	--ob-text-3xl: 2.25rem;
+	--ob-text-4xl: 3rem;
+	--ob-text-5xl: 3.75rem;
+
+	--ob-tracking-tight: -0.022em;
+	--ob-tracking-tighter: -0.032em;
+
+	/* One spacing rhythm, used everywhere. */
+	--ob-space-1: 0.25rem;
+	--ob-space-2: 0.5rem;
+	--ob-space-3: 0.75rem;
+	--ob-space-4: 1rem;
+	--ob-space-5: 1.5rem;
+	--ob-space-6: 2rem;
+	--ob-space-7: 3rem;
+	--ob-space-8: 4rem;
+	--ob-space-9: 6rem;
+	--ob-space-10: 8rem;
+
+	--ob-radius-sm: 4px;
+	--ob-radius: 8px;
+	--ob-radius-lg: 12px;
+	--ob-radius-xl: 16px;
+
+	--ob-measure: 68ch;
+	--ob-container: 1200px;
+
+	--ob-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Light is the default: these pages are read at a desk in daylight, next to a
+   bank statement, as often as they are read at night. */
+:root,
+:root[data-theme='light'] {
+	--ob-bg: #ffffff;
+	--ob-bg-subtle: #f7f8f8;
+	--ob-bg-sunken: #f0f2f2;
+	--ob-bg-inset: #14181b;
+
+	--ob-border: #e2e5e7;
+	--ob-border-strong: #cbd0d3;
+
+	--ob-text: #14181b;
+	--ob-text-2: #4a5257;
+	--ob-text-3: #697178;
+
+	--ob-accent: #0b7a5b;
+	--ob-accent-hover: #096349;
+	--ob-accent-text: #08624a;
+	--ob-accent-soft: #e6f4ef;
+	--ob-accent-contrast: #ffffff;
+
+	--ob-shadow-sm: 0 1px 2px rgba(20, 24, 27, 0.06), 0 1px 3px rgba(20, 24, 27, 0.05);
+	--ob-shadow: 0 2px 4px rgba(20, 24, 27, 0.05), 0 6px 16px rgba(20, 24, 27, 0.07);
+	--ob-shadow-lg: 0 4px 8px rgba(20, 24, 27, 0.05), 0 16px 40px rgba(20, 24, 27, 0.1);
+}
+
+:root[data-theme='dark'] {
+	--ob-bg: #0b0d0e;
+	--ob-bg-subtle: #14181a;
+	--ob-bg-sunken: #101314;
+	--ob-bg-inset: #050708;
+
+	--ob-border: #23282b;
+	--ob-border-strong: #343b3f;
+
+	--ob-text: #eceff1;
+	--ob-text-2: #a9b2b7;
+	--ob-text-3: #838d93;
+
+	--ob-accent: #3ecf9a;
+	--ob-accent-hover: #5fdcac;
+	--ob-accent-text: #4fd9a6;
+	--ob-accent-soft: #10231d;
+	--ob-accent-contrast: #04211a;
+
+	--ob-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+	--ob-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.45);
+	--ob-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+/*
+ * One focus treatment for both surfaces. It lives here rather than in either
+ * stylesheet because the landing page does not load starlight.css, and a
+ * keyboard reader should not get the UA default on half the site.
+ */
+:is(a, button, summary, input, select, textarea):focus-visible {
+	outline: 2px solid var(--ob-accent);
+	outline-offset: 2px;
+	border-radius: var(--ob-radius-sm);
+}

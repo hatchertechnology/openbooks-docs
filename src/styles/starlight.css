@@ -1,0 +1,142 @@
+/*
+ * Starlight wearing the same identity as the landing page. Everything here maps
+ * a Starlight variable onto an --ob-* token, so the two surfaces cannot drift.
+ * Nothing forks a Starlight component; upgrades stay cheap.
+ */
+
+:root {
+	--sl-font: var(--ob-font);
+	--sl-font-mono: var(--ob-font-mono);
+	--sl-content-width: 50rem;
+	--sl-nav-height: 3.75rem;
+	--sl-text-code: var(--ob-text-sm);
+}
+
+/* Dark — Starlight's :root is its dark theme. */
+:root,
+:root[data-theme='dark'] {
+	--sl-color-accent-low: #10231d;
+	--sl-color-accent: #1d8a63;
+	--sl-color-accent-high: #8ee9c3;
+
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #eceff1;
+	--sl-color-gray-2: #c6ced2;
+	--sl-color-gray-3: #a9b2b7;
+	--sl-color-gray-4: #6c757b;
+	--sl-color-gray-5: #3c4347;
+	--sl-color-gray-6: #23282b;
+	--sl-color-gray-7: #181c1e;
+	--sl-color-black: #0b0d0e;
+
+	--sl-color-bg: var(--ob-bg);
+	--sl-color-bg-nav: color-mix(in srgb, var(--ob-bg) 88%, transparent);
+	--sl-color-bg-sidebar: var(--ob-bg);
+	--sl-color-bg-inline-code: var(--ob-bg-subtle);
+	--sl-color-hairline: var(--ob-border);
+	--sl-color-hairline-light: var(--ob-border);
+	--sl-color-hairline-shade: var(--ob-border);
+	--sl-color-text: var(--ob-text-2);
+	--sl-color-text-accent: var(--ob-accent-text);
+	--sl-color-text-invert: var(--ob-accent-contrast);
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #e6f4ef;
+	--sl-color-accent: #0b7a5b;
+	--sl-color-accent-high: #064334;
+
+	--sl-color-white: #14181b;
+	--sl-color-gray-1: #14181b;
+	--sl-color-gray-2: #4a5257;
+	--sl-color-gray-3: #697178;
+	--sl-color-gray-4: #8a9298;
+	--sl-color-gray-5: #cbd0d3;
+	--sl-color-gray-6: #e2e5e7;
+	--sl-color-gray-7: #f0f2f2;
+	--sl-color-black: #ffffff;
+}
+
+/* Headings: the scale and tracking the landing page uses, so a reader moving
+   from / into a page does not feel handed to a different site. */
+.sl-markdown-content :is(h1, h2, h3, h4) {
+	color: var(--ob-text);
+	letter-spacing: var(--ob-tracking-tight);
+	font-weight: 640;
+}
+.sl-markdown-content :is(h2, h3, h4):not(:where(.not-content *)) {
+	margin-top: 2.25em;
+	margin-bottom: 0.75em;
+}
+.sl-markdown-content h2 {
+	font-size: var(--ob-text-2xl);
+	padding-bottom: var(--ob-space-3);
+	border-bottom: 1px solid var(--ob-border);
+}
+.sl-markdown-content h3 {
+	font-size: var(--ob-text-xl);
+}
+.site-title {
+	font-weight: 620;
+	letter-spacing: var(--ob-tracking-tight);
+}
+
+/* Tables carry more of these pages than prose does — endpoints, flags,
+   keybindings, env vars. They get the precision they deserve, and they scroll
+   inside themselves rather than pushing the page sideways. */
+.sl-markdown-content table {
+	font-size: var(--ob-text-sm);
+	border-collapse: collapse;
+	width: 100%;
+}
+.sl-markdown-content :is(th, td) {
+	border: 0;
+	border-bottom: 1px solid var(--ob-border);
+	padding: var(--ob-space-3) var(--ob-space-4);
+	vertical-align: baseline;
+}
+.sl-markdown-content th {
+	color: var(--ob-text-3);
+	font-weight: 560;
+	font-size: var(--ob-text-xs);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	border-bottom-color: var(--ob-border-strong);
+}
+.sl-markdown-content :is(th, td):first-child {
+	padding-left: 0;
+}
+.sl-markdown-content td code {
+	font-size: 0.9em;
+}
+/* Figures in a table read as figures: aligned right, tabular, never reflowed. */
+.sl-markdown-content td:not(:first-child) code:only-child {
+	white-space: nowrap;
+}
+
+.sl-markdown-content :is(pre, .expressive-code) {
+	border-radius: var(--ob-radius);
+}
+.sl-markdown-content code:not(:where(pre code)) {
+	border: 1px solid var(--ob-border);
+	border-radius: var(--ob-radius-sm);
+	padding: 0.1em 0.32em;
+	font-size: 0.875em;
+}
+
+/* A link inside prose should look like one without shouting. */
+.sl-markdown-content a:not(:where(.not-content *)) {
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.2em;
+	text-decoration-color: color-mix(in srgb, var(--ob-accent) 45%, transparent);
+}
+.sl-markdown-content a:hover:not(:where(.not-content *)) {
+	text-decoration-color: var(--ob-accent);
+}
+
+/* One visible focus treatment across both surfaces. */
+:is(a, button, summary, input, select, textarea):focus-visible {
+	outline: 2px solid var(--ob-accent);
+	outline-offset: 2px;
+	border-radius: var(--ob-radius-sm);
+}

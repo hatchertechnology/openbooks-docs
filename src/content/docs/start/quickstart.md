@@ -2,7 +2,7 @@
 title: Quickstart
 description: Clone OpenBooks, bring up Postgres, the API, and the web UI, and record your first transaction.
 sidebar:
-  order: 1
+  order: 2
 ---
 
 ## What you need
@@ -48,7 +48,7 @@ just seed
 ```
 
 Every route except `GET /health` requires signing in (see
-[Authentication](/openbooks-docs/api/auth/)), so watch the output: on a fresh database,
+[Authentication](/openbooks-docs/dev/auth/)), so watch the output: on a fresh database,
 `just seed` prints a password for `demo@example.com`. It's shown once and isn't stored
 anywhere, so write it down. Open <http://localhost:38080> and sign in with that email and
 password.
@@ -109,6 +109,6 @@ was never started.
 
 - [Running the stack](/openbooks-docs/start/running/) covers the rest of the `just` recipes,
   where the logs go, and running things without `just`.
-- [Double-entry, explained](/openbooks-docs/concepts/double-entry/) if you want to know what
+- [Double-entry, explained](/openbooks-docs/use/double-entry/) if you want to know what
   the ledger is actually doing.
 - The API, web, CLI, and desktop sections each document one component.

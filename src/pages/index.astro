@@ -1,0 +1,539 @@
+---
+import { Image } from 'astro:assets';
+import '@fontsource-variable/geist/index.css';
+import '@fontsource-variable/geist-mono/index.css';
+import '../styles/tokens.css';
+import '../styles/landing.css';
+import desktopHome from '../assets/desktop-home.png';
+import desktopReports from '../assets/desktop-reports.png';
+import desktopTransactions from '../assets/desktop-transactions.png';
+import tuiDashboard from '../assets/tui-dashboard-80.txt?raw';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const repo = 'https://github.com/hatchertechnology/openbooks';
+
+// A real 80x24 pane, which is the smallest the TUI will render — it refuses
+// anything narrower and says so. Drop the empty rows in the middle of the table
+// so the panel is as tall as its content rather than as tall as a terminal,
+// keeping the keybinding footer that closes it.
+const tuiRows = tuiDashboard.replace(/\s+$/, '').split('\n');
+const tui = [...tuiRows.slice(0, 19), ...tuiRows.slice(22)].join('\n');
+
+const tracks = [
+	{
+		href: `${base}/use/recording-money/`,
+		name: 'For treasurers',
+		blurb:
+			'Record what came in and what went out, then print the statement for the meeting. No debits, no credits, no journal.',
+		items: ['Recording money', 'Statements', 'The desktop app', 'Working offline'],
+	},
+	{
+		href: `${base}/server/install/`,
+		name: 'Running a server',
+		blurb:
+			'Stand it up for your club: Postgres, the API, the environment it reads, and the users who can sign in.',
+		items: ['Install', 'Postgres', 'Configuration', 'Users and tokens'],
+	},
+	{
+		href: `${base}/dev/architecture/`,
+		name: 'For developers',
+		blurb:
+			'One database, one API, four clients. The ledger model, every HTTP route, and the MCP tools built on the same code.',
+		items: ['Architecture', 'Endpoints', 'Data model', 'MCP server'],
+	},
+];
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>OpenBooks — bookkeeping for a family or club</title>
+		<meta
+			name="description"
+			content="Double-entry bookkeeping for a family or club. Keep the books, print the statements for the meeting, and never learn what a debit is."
+		/>
+		<link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+		<meta property="og:title" content="OpenBooks" />
+		<meta
+			property="og:description"
+			content="Double-entry bookkeeping for a family or club — a Rust API, a web app, a terminal client, and a native desktop app."
+		/>
+		<meta name="theme-color" content="#0b7a5b" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#0b0d0e" media="(prefers-color-scheme: dark)" />
+		<script is:inline>
+			// Starlight stores the reader's choice under this key, so the landing page
+			// and the docs agree about light or dark before first paint.
+			(() => {
+				const stored = (() => {
+					try {
+						return localStorage.getItem('starlight-theme');
+					} catch {
+						return null;
+					}
+				})();
+				const theme =
+					stored === 'light' || stored === 'dark'
+						? stored
+						: matchMedia('(prefers-color-scheme: dark)').matches
+							? 'dark'
+							: 'light';
+				document.documentElement.dataset.theme = theme;
+			})();
+		</script>
+	</head>
+	<body>
+		<!--
+		THESIS: A documentation front door for a bookkeeping app whose users are not
+		accountants: the conventional open-source docs landing page executed at full
+		craft, refusing the invented visual world twice offered and declined.
+		OWN-WORLD: Neutral ramp plus one jade accent (#0b7a5b / #3ecf9a); Geist and
+		Geist Mono self-hosted; hairline rules, tabular figures, real product frames.
+		STORY: A treasurer or admin learns this keeps real double-entry books without
+		showing them one, then enters the track written for them.
+		FIRST VIEWPORT: Left-ranged headline at 3.75rem over one plain sentence, two
+		actions, and a live figure strip from the seeded books; the desktop client's
+		real home screen sits right, bleeding off the grid.
+		FORM: The category standard, taken as the standing exit on the second
+		direction round; candidate 5 of the grounded list was The Noticeboard, seed
+		key 03f772da.
+		FINISH: unreviewed and undocumented is unfinished; this build ends with the
+		finish review, the verdict, and DESIGN.md
+		-->
+		<a class="skip" href="#main">Skip to content</a>
+
+		<header class="nav">
+			<div class="nav__inner">
+				<a class="nav__brand" href={`${base}/`}>
+					<svg class="nav__mark" viewBox="0 0 24 24" aria-hidden="true">
+						<path
+							d="M4 5.5h7.5v13H4zM12.5 5.5H20v13h-7.5z"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.6"
+							stroke-linejoin="round"></path>
+						<path d="M6.5 9h2.5M6.5 12h2.5M15 9h2.5M15 12h2.5" stroke="currentColor" stroke-width="1.6"
+						></path>
+					</svg>
+					OpenBooks
+				</a>
+				<nav class="nav__links" aria-label="Sections">
+					<a href={`${base}/start/what-it-is/`}>Start</a>
+					<a href={`${base}/use/recording-money/`}>Treasurers</a>
+					<a href={`${base}/server/install/`}>Server</a>
+					<a href={`${base}/dev/architecture/`}>Developers</a>
+				</nav>
+				<div class="nav__end">
+					<details class="nav__menu">
+						<summary aria-label="Sections">
+							<svg viewBox="0 0 24 24" aria-hidden="true">
+								<path
+									d="M4 7h16M4 12h16M4 17h16"
+									stroke="currentColor"
+									stroke-width="1.7"
+									stroke-linecap="round"></path>
+							</svg>
+						</summary>
+						<div class="nav__menu-panel">
+							<a href={`${base}/start/what-it-is/`}>Start</a>
+							<a href={`${base}/use/recording-money/`}>Treasurers</a>
+							<a href={`${base}/server/install/`}>Server</a>
+							<a href={`${base}/dev/architecture/`}>Developers</a>
+						</div>
+					</details>
+					<button class="nav__theme" type="button" aria-label="Switch between light and dark">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"
+							></circle>
+							<path
+								d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linecap="round"></path>
+						</svg>
+					</button>
+					<a class="nav__repo" href={repo}>
+						<svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+							<path
+								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-2.65-.89-2.65-2.5 0-.46.16-1.38.68-1.9-.07-.2-.28-.85.07-1.77 0 0 .68-.21 2.22.82a5.5 5.5 0 0 1 1.5-.2c.51 0 1.02.07 1.5.2 1.54-1.04 2.22-.82 2.22-.82.35.92.14 1.57.07 1.77.52.52.68 1.44.68 1.9 0 1.62-.87 2.3-2.66 2.5.28.24.53.71.53 1.44 0 1.04-.01 1.88-.01 2.14 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+							></path>
+						</svg>
+						GitHub
+					</a>
+				</div>
+			</div>
+		</header>
+
+		<main id="main">
+			<section class="hero">
+				<div class="hero__text">
+					<h1>Keep the books for a club without learning what a debit is.</h1>
+					<p class="hero__lede">
+						OpenBooks records what came in and what went out, then prints the statement for the
+						monthly meeting. Underneath every entry is a real double-entry ledger that the database
+						itself refuses to let go crooked.
+					</p>
+					<div class="hero__actions">
+						<a class="btn btn--primary" href={`${base}/start/quickstart/`}>
+							Quickstart
+							<svg viewBox="0 0 16 16" aria-hidden="true">
+								<path
+									d="M3 8h9.5M9 4.5 12.5 8 9 11.5"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"></path>
+							</svg>
+						</a>
+						<a class="btn" href={`${base}/start/what-it-is/`}>What it is</a>
+					</div>
+					<dl class="figures" aria-label="From the sample books that ship with the project">
+						<div>
+							<dt>On hand</dt>
+							<dd>$7,577.50</dd>
+						</div>
+						<div>
+							<dt>Money in, 2026</dt>
+							<dd>$7,565.00</dd>
+						</div>
+						<div>
+							<dt>Money out, 2026</dt>
+							<dd>$4,885.00</dd>
+						</div>
+						<div>
+							<dt>Transactions</dt>
+							<dd>83</dd>
+						</div>
+					</dl>
+					<p class="figures__note">
+						Real figures from the sample books <code>just seed</code> loads, not illustrations.
+					</p>
+				</div>
+				<div class="hero__frame"><div class="shot shot--hero">
+					<Image
+						src={desktopHome}
+						alt="The OpenBooks desktop client showing money on hand, a form for recording something, and every account with its balance."
+						widths={[560, 900, 1400]}
+						sizes="(max-width: 60rem) 92vw, 46rem"
+						loading="eager"
+					/>
+					</div>
+				</div>
+			</section>
+
+			<section class="section" aria-labelledby="proof">
+				<div class="section__head">
+					<h2 id="proof">The books cannot go crooked</h2>
+					<p>
+						Every entry carries a signed amount in integer cents, debit positive and credit
+						negative, and a transaction is balanced when its entries sum to zero. That rule is not
+						enforced in application code, where a bug could get around it. It is a deferred
+						constraint trigger inside Postgres.
+					</p>
+				</div>
+				<div class="proof">
+					<div class="proof__step">
+						<h3>You record one thing</h3>
+						<p>
+							A treasurer picks an amount, a date, where the money came from, and what it was for.
+							Four fields, no vocabulary to learn.
+						</p>
+						<div class="slip">
+							<div class="slip__row"><span>What happened</span><b>Member dues</b></div>
+							<div class="slip__row"><span>Date</span><b>2026-07-08</b></div>
+							<div class="slip__row"><span>Amount</span><b>$685.00</b></div>
+							<div class="slip__row"><span>Paid into</span><b>Checking Account</b></div>
+						</div>
+					</div>
+					<div class="proof__step">
+						<h3>The API writes two legs</h3>
+						<p>
+							The client composes the two-legged transaction. Amounts are integer cents and they
+							sum to zero, which is the whole definition of balanced.
+						</p>
+						<table class="legs">
+							<thead>
+								<tr><th scope="col">Account</th><th scope="col">amount_cents</th></tr>
+							</thead>
+							<tbody>
+								<tr><td>Checking Account</td><td class="num">+68500</td></tr>
+								<tr><td>Dues</td><td class="num">−68500</td></tr>
+							</tbody>
+							<tfoot>
+								<tr><td>Sum</td><td class="num num--total">0</td></tr>
+							</tfoot>
+						</table>
+					</div>
+					<div class="proof__step">
+						<h3>Postgres refuses the rest</h3>
+						<p>
+							Deferred to the end of the transaction, because entries arrive one at a time. Post a
+							single leg and the database throws it out, whatever the API believed.
+						</p>
+						<div class="proof__artifact">
+						<pre class="code"><code>{`create constraint trigger entries_balanced
+    after insert or update or delete on entries
+    deferrable initially deferred
+    for each row execute function assert_balanced();`}</code></pre>
+						<p class="proof__err">
+							<span>ERROR</span> unbalanced transaction 41: entries sum to 68500 cents, must be 0
+						</p>
+						</div>
+					</div>
+				</div>
+				<p class="section__foot">
+					<a href={`${base}/use/double-entry/`}>How double-entry works, for non-accountants</a>
+					<a href={`${base}/dev/invariants/`}>Every invariant, and where it is enforced</a>
+				</p>
+			</section>
+
+			<section class="section" aria-labelledby="clients">
+				<div class="section__head">
+					<h2 id="clients">Four ways in, one set of books</h2>
+					<p>
+						One Postgres database and one Rust API, with four clients over it. Pick whichever suits
+						the person doing the job — they are all reading and writing the same ledger.
+					</p>
+				</div>
+
+				<div class="client">
+					<div class="client__text">
+						<h3>The native desktop app</h3>
+						<p>
+							Rust on ply-engine, with a local snapshot cache. When it cannot reach the API it
+							keeps working from the last sync and goes read-only rather than pretending — the
+							delete control is absent, not merely disabled.
+						</p>
+						<a class="link" href={`${base}/use/desktop/`}>The desktop app</a>
+					</div>
+					<figure class="client__frame">
+						<div class="shot">
+						<Image
+							src={desktopTransactions}
+							alt="The desktop client's transactions screen listing real seeded entries with dates, descriptions and amounts."
+							widths={[640, 1000, 1600]}
+							sizes="(max-width: 60rem) 92vw, 40rem"
+							loading="lazy"
+						/>
+						</div>
+					</figure>
+				</div>
+
+				<div class="client client--reverse">
+					<div class="client__text">
+						<h3>The terminal client</h3>
+						<p>
+							A full-screen ratatui interface over four tabs, plus a scriptable subcommand mode
+							with text and JSON output for shell pipelines. It parses dollars to integer cents
+							with string arithmetic, never a float.
+						</p>
+						<a class="link" href={`${base}/use/terminal/`}>The terminal UI</a>
+					</div>
+					<figure class="client__frame client__frame--term">
+						<pre class="term"><code>{tui}</code></pre>
+					</figure>
+				</div>
+
+				<div class="client">
+					<div class="client__text">
+						<h3>Statements for the meeting</h3>
+						<p>
+							Balances, an income statement, and a balance sheet, over any period. Reports flip the
+							sign on income, liability and equity accounts, so every line on the printed handout
+							reads as a positive number.
+						</p>
+						<a class="link" href={`${base}/use/statements/`}>Statements</a>
+					</div>
+					<figure class="client__frame">
+						<div class="shot">
+						<Image
+							src={desktopReports}
+							alt="The reports screen showing money in and money out for 2026, each broken down by category with totals."
+							widths={[640, 1000, 1600]}
+							sizes="(max-width: 60rem) 92vw, 40rem"
+							loading="lazy"
+						/>
+						</div>
+					</figure>
+				</div>
+
+				<div class="client client--reverse">
+					<div class="client__text">
+						<h3>An MCP server, on the same code</h3>
+						<p>
+							The API mounts a Model Context Protocol server at <code>/mcp</code> beside its HTTP
+							routes, and every tool delegates to the same functions the handlers call. Add a
+							report and the agent interface follows for free. Each result carries the same
+							payload twice — once as text for the model to read, and once as
+							<code>structuredContent</code>, shown here.
+						</p>
+						<a class="link" href={`${base}/dev/mcp/`}>MCP server</a>
+					</div>
+					<figure class="client__frame client__frame--term">
+						<pre class="term"><code>{`$ curl -s localhost:38081/mcp \\
+    -H "Authorization: Bearer $OPENBOOKS_TOKEN" \\
+    -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
+         "params":{"name":"income_statement",
+                   "arguments":{"from":"2026-01-01","to":"2026-06-30"}}}'
+
+{"id":1,"jsonrpc":"2.0","result":{"structuredContent":{
+  "from": "2026-01-01", "to": "2026-06-30",
+  "income": [
+    { "account": "Donations",   "cents": 150000 },
+    { "account": "Dues",        "cents": 379500 },
+    { "account": "Fundraising", "cents": 124500 }
+  ],
+  "expenses": [
+    { "account": "Fees",        "cents":      0 },
+    { "account": "Field Trips", "cents":  45500 },
+    { "account": "Food",        "cents":  71200 },
+    { "account": "Insurance",   "cents":  71000 },
+    { "account": "Rent",        "cents": 195000 },
+    { "account": "Supplies",    "cents":  65900 }
+  ],
+  "total_income_cents": 654000,
+  "total_expenses_cents": 448600,
+  "net_cents": 205400
+}}}`}</code></pre>
+					</figure>
+				</div>
+			</section>
+
+			<section class="section section--tracks" aria-labelledby="tracks">
+				<div class="section__head">
+					<h2 id="tracks">Read the part written for you</h2>
+					<p>
+						The same system documented three ways, because a treasurer printing a statement and
+						someone standing up a server need different pages, not the same page with more of it.
+					</p>
+				</div>
+				<div class="tracks">
+					{
+						tracks.map((track) => (
+							<a class="track" href={track.href}>
+								<h3>{track.name}</h3>
+								<p>{track.blurb}</p>
+								<ul>
+									{track.items.map((item) => (
+										<li>{item}</li>
+									))}
+								</ul>
+								<span class="track__go">
+									Open
+									<svg viewBox="0 0 16 16" aria-hidden="true">
+										<path
+											d="M3 8h9.5M9 4.5 12.5 8 9 11.5"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.6"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										/>
+									</svg>
+								</span>
+							</a>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="section" aria-labelledby="run">
+				<div class="install">
+					<div class="install__text">
+						<h2 id="run">Run it tonight</h2>
+						<p>
+							Docker for Postgres, a Rust toolchain, Node for the web app, and{' '}
+							<code>just</code>. The recipe waits for the database to be healthy, applies the
+							migrations, and brings up the API and the UI together.
+						</p>
+						<p class="install__links">
+							<a class="link" href={`${base}/start/quickstart/`}>Quickstart</a>
+							<a class="link" href={`${base}/server/install/`}>Hosting it for a club</a>
+						</p>
+					</div>
+					<pre class="code code--install"><code>{`git clone --recurse-submodules \\
+  ${repo}.git
+cd openbooks
+just run          # postgres, api, web
+just seed         # sample books, 2025 – mid-2026
+just user-add you@example.com`}</code></pre>
+				</div>
+			</section>
+
+			<section class="section" aria-labelledby="honest">
+				<div class="honest">
+					<h2 id="honest">Where it stands</h2>
+					<p>
+						A working proof of concept for a family or a club, not a product. Two things are worth
+						knowing before you read further.
+					</p>
+					<ul>
+						<li>
+							<b>Authentication is required.</b> The web app uses a session cookie; every other
+							client sends a bearer token. Users are created with{' '}
+							<code>just user-add</code>, never over HTTP.
+						</li>
+						<li>
+							<b>There is deliberately no RBAC.</b> Any authenticated user can do anything any
+							other can. For one household or one club treasury that is the intended design, not a
+							gap.
+						</li>
+					</ul>
+					<p class="honest__links">
+						<a class="link" href={`${base}/dev/auth/`}>How authentication works</a>
+						<a class="link" href={`${base}/server/users-and-tokens/`}>Users and tokens</a>
+					</p>
+				</div>
+			</section>
+		</main>
+
+		<footer class="foot">
+			<div class="foot__inner">
+				<p>
+					OpenBooks is one Postgres database, one Rust API, and four clients, each a git submodule
+					of the <a href={repo}>openbooks</a> superproject.
+				</p>
+				<nav class="foot__links" aria-label="Documentation">
+					<a href={`${base}/start/quickstart/`}>Quickstart</a>
+					<a href={`${base}/use/recording-money/`}>Treasurers</a>
+					<a href={`${base}/server/install/`}>Server</a>
+					<a href={`${base}/dev/architecture/`}>Developers</a>
+					<a href={repo}>Source</a>
+				</nav>
+			</div>
+		</footer>
+
+		<script is:inline>
+			// The theme toggle writes the key Starlight reads, so the choice survives
+			// the walk from this page into the docs and back.
+			document.querySelector('.nav__theme')?.addEventListener('click', () => {
+				const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+				document.documentElement.dataset.theme = next;
+				try {
+					localStorage.setItem('starlight-theme', next);
+				} catch {}
+			});
+
+			// The one authored motion moment: the proof section's three steps settle in
+			// sequence, once, from an already-visible default.
+			if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+				const steps = document.querySelectorAll('.proof__step');
+				const io = new IntersectionObserver(
+					(entries) => {
+						for (const entry of entries) {
+							if (!entry.isIntersecting) continue;
+							const el = entry.target;
+							el.style.setProperty('--i', [...steps].indexOf(el));
+							el.classList.add('is-settled');
+							io.unobserve(el);
+						}
+					},
+					{ threshold: 0.25 }
+				);
+				steps.forEach((step) => io.observe(step));
+			}
+		</script>
+	</body>
+</html>

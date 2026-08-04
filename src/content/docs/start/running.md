@@ -2,7 +2,7 @@
 title: Running the stack
 description: Every just recipe, where the logs go, and how to run the pieces by hand.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 Drive the dev environment through the `justfile` at the root of the `openbooks` superproject.
@@ -34,8 +34,8 @@ those wrong.
 
 `just` on its own lists them. `user-add`, `users`, and `mint-token` wrap the
 API binary's own admin verbs, which need `DATABASE_URL` — see
-[Authentication](/openbooks-docs/api/auth/) and
-[API overview](/openbooks-docs/api/overview/#admin-commands).
+[Authentication](/openbooks-docs/dev/auth/) and
+[API overview](/openbooks-docs/dev/api/#admin-commands).
 
 ## Ports
 
@@ -56,7 +56,7 @@ The API answers `GET /health`, which is what `just status` and the startup waits
 | `SESSION_TTL_DAYS` | `30` | how long a signed-in web session lasts |
 | `OPENBOOKS_TOKEN` | none | the bearer token `openbooks-cli`, `openbooks-desktop`, and `/mcp` read for authentication |
 
-See [Authentication](/openbooks-docs/api/auth/) for what each one governs.
+See [Authentication](/openbooks-docs/dev/auth/) for what each one governs.
 
 ## Logs
 

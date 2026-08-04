@@ -24,3 +24,6 @@ pnpm-debug.log*
 .deno/
 coverage/
 *.lcov
+
+# design-tooling scratch: hook cache and direction sketches, not site content
+.impeccable/
