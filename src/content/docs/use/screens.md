@@ -120,3 +120,37 @@ way they're stored.
 API calls: `GET /transactions` with no range, plus the shared `GET /accounts` and
 `GET /reports/balances`. An unknown id renders a "No such account" state rather than
 an error.
+
+## Consent (`/authorize`)
+
+File: `openbooks-web/app/pages/authorize.vue`.
+
+Not in the sidebar and not reached by navigating the app — this page only
+appears when the API's `GET /oauth/authorize` redirects a signed-in browser
+here, which happens when `openbooks-cli auth login` (or any other OAuth
+client) opens one. Nothing about it is reachable by clicking around inside
+OpenBooks.
+
+It shows the client's registered display name — read from the API via
+`GET /oauth/client_info`, never from the query string, so a crafted link
+can't put a flattering name in front of the person approving it — and one
+sentence of consequence:
+
+> **openbooks-cli** is asking to use your books. If you allow it, it can
+> read and change everything you can — there are no partial permissions
+> here.
+
+That sentence is literal, not a simplification for the reader: there is no
+scope system anywhere in OpenBooks, so **Allow** grants exactly the same
+total access any signed-in user already has, nothing narrower. **Don't
+allow** sends the browser back to the client with `error=access_denied` and
+no code. Choosing either calls `POST /oauth/authorize/approve`, which
+requires the full cookie session this page's own middleware already
+demanded to get here, and the response tells the page where to send the
+browser next — a loopback address on the same machine, not a page inside
+this app, so the navigation is a real `window.location.href` assignment
+rather than a router push.
+
+Reaching this page at all requires having signed in with both factors
+already — see [Authentication](/openbooks-docs/dev/auth/) for the OAuth
+protocol behind it, and the sign-in flow itself.

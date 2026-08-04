@@ -41,24 +41,43 @@ cargo test
 
 ## Authenticating
 
-Every request needs a bearer token: `openbooks-cli` reads `OPENBOOKS_TOKEN`
-from the environment and, when set, sends `Authorization: Bearer
-$OPENBOOKS_TOKEN` on every call (`openbooks-cli/src/api.rs`). Get one with:
+Every request needs a bearer token. The normal way to get one is
+`openbooks-cli auth login` (see the [command reference](/openbooks-docs/dev/cli-commands/#auth)),
+which opens a browser, runs you through password + passkey sign-in and the
+consent screen, and stores the resulting access and refresh tokens at
+`$XDG_CONFIG_HOME/openbooks/credentials.json`, falling back to
+`~/.config/openbooks/credentials.json` when `XDG_CONFIG_HOME` isn't set
+(`credentials_path()` in `openbooks-cli/src/auth.rs`). The file is written
+mode `0600` — created with that mode directly, never written then
+`chmod`-ed after, so there's no window where it's readable by anyone else.
+
+**`OPENBOOKS_TOKEN` still works, and takes precedence when set** — it skips
+the stored file entirely (`api.rs`'s `Client::new`), which is what `seed.sh`,
+`smoke.sh`, and `just mint-token` all rely on:
 
 ```bash
 export OPENBOOKS_TOKEN=$(just mint-token you@example.com)
 ```
 
-Without it, a request comes back `401` and the CLI reports:
+Without either a stored credential or `OPENBOOKS_TOKEN`, a request comes
+back `401` and the CLI reports:
 
 ```
-not signed in — export OPENBOOKS_TOKEN=$(just mint-token you@example.com)
+not signed in — run: openbooks auth login
 ```
 
-Phase 1 has no `auth login` in any client — this is the only way
-`openbooks-cli` gets a credential until phase 3 adds one. See
-[Authentication](/openbooks-docs/dev/auth/) for what the token is good for
-and how long it lasts.
+A `401` on a request that *does* have a stored refresh token triggers one
+automatic refresh-and-retry before that message ever appears — see
+[A 401 refreshes once and retries](/openbooks-docs/dev/cli-commands/#a-401-refreshes-once-and-retries).
+
+**The OS keyring is not implemented.** The spec for this called for
+keyring-first storage with the file as a fallback; the file is what has to
+work regardless (a headless box over SSH has no Secret Service to talk to),
+so it shipped alone and the keyring is deferred — `load()`, `save()`, and
+`clear()` in `openbooks-cli/src/auth.rs` are the three functions a keyring
+implementation would touch. See [Authentication](/openbooks-docs/dev/auth/) for what the
+token is good for, how long it lasts, and the OAuth flow underneath
+`auth login`.
 
 ## Reaching the API
 

@@ -23,6 +23,11 @@ nobody's tailing.
 `just desktop` doesn't start the web dev server; the desktop client has no use
 for it.
 
+Already inside `openbooks-desktop/`? `just run` there does the same thing — it
+delegates to the root `just desktop` when it finds the superproject's
+`justfile` beside it, and falls back to plain `cargo run` when the repo is
+checked out standalone.
+
 ## Building directly with cargo
 
 If you'd rather not go through `just`, make sure postgres and `openbooks-api`

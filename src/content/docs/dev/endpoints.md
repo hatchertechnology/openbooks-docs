@@ -12,8 +12,11 @@ The MCP endpoint (`/mcp`) is covered in [MCP server](/openbooks-docs/dev/mcp/).
 ## Authentication
 
 Every route below, and every report and MCP route, requires a session cookie
-or a bearer token — only `GET /health` is open. A request with neither, or
-with an expired or invalid one, gets:
+or a bearer token. The only routes open to anyone are `GET /health`,
+`POST /auth/login`/`logout`, the two `.well-known` documents, and
+`GET /oauth/authorize`/`POST /oauth/token` — see [OAuth](#oauth) below. A
+request to anything else with no credential, or an expired or invalid one,
+gets:
 
 ```
 HTTP/1.1 401 Unauthorized
@@ -25,8 +28,8 @@ WWW-Authenticate: Bearer resource_metadata="http://localhost:38081/.well-known/o
 ```
 
 See [Authentication](/openbooks-docs/dev/auth/) for the credential types, the
-`/auth/*` routes themselves, and what that challenge header does and doesn't
-mean in phase 1.
+`/auth/*` routes, the WebAuthn ceremonies, and the OAuth protocol behind the
+metadata that challenge header points at.
 
 ## Health
 
@@ -38,6 +41,155 @@ authentication — the one open route.
 ```sh
 curl localhost:38081/health
 ```
+
+## OAuth
+
+Four routes need no credential at all, and two need a full cookie session.
+All six are implemented in `openbooks-api/src/oauth/`; see
+[Authentication](/openbooks-docs/dev/auth/) for the protocol they implement —
+PKCE, the loopback rule, refresh rotation — this page is just the wire shape.
+
+Every response from this module, success or error, carries
+`Cache-Control: no-store`. Every **error** response — from any of the six
+routes — uses the OAuth error shape, `{"error", "error_description"}`, which
+is distinct from the ledger's plain `{"error"}`:
+
+```json
+{ "error": "invalid_grant", "error_description": "that refresh token is not redeemable" }
+```
+
+### `GET /.well-known/oauth-protected-resource`
+
+No params, no auth. Returns:
+
+```json
+{
+  "resource": "http://localhost:38081",
+  "authorization_servers": ["http://localhost:38081"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+### `GET /.well-known/oauth-authorization-server`
+
+No params, no auth. Returns:
+
+```json
+{
+  "issuer": "http://localhost:38081",
+  "authorization_endpoint": "http://localhost:38081/oauth/authorize",
+  "token_endpoint": "http://localhost:38081/oauth/token",
+  "response_types_supported": ["code"],
+  "grant_types_supported": ["authorization_code", "refresh_token"],
+  "code_challenge_methods_supported": ["S256"],
+  "token_endpoint_auth_methods_supported": ["none"]
+}
+```
+
+### `GET /oauth/authorize`
+
+No auth (see [Authentication](/openbooks-docs/dev/auth/) for why that's
+deliberate).
+
+**Query params:** `client_id`, `redirect_uri`, `response_type` (`code`),
+`code_challenge`, `code_challenge_method` (`S256`), `resource`, and an
+optional `state`.
+
+**Responses:**
+
+- `303 See Other`, `Location: <WEB_ORIGIN>/authorize?<same query string>` — valid request
+- `400 Bad Request` (`invalid_request`) — bad `response_type`, bad PKCE
+  shape, unregistered `redirect_uri`, or `resource` not this API
+- `401 Unauthorized` (`invalid_client`) — unknown `client_id`
+
+```sh
+open 'http://localhost:38081/oauth/authorize?response_type=code&client_id=openbooks-cli&redirect_uri=http%3A%2F%2F127.0.0.1%3A54213%2Fcallback&code_challenge=...&code_challenge_method=S256&resource=http%3A%2F%2Flocalhost%3A38081'
+```
+
+### `POST /oauth/token`
+
+No auth — authenticated by the code/verifier or refresh token in the body,
+not by a header. **Form-encoded** (`application/x-www-form-urlencoded`), not
+JSON.
+
+**Request body**, `grant_type=authorization_code`:
+
+| Field | Required |
+|---|---|
+| `grant_type` | `authorization_code` |
+| `code` | yes |
+| `redirect_uri` | yes |
+| `client_id` | yes |
+| `code_verifier` | yes |
+| `resource` | no (checked against this API if present) |
+
+**Request body**, `grant_type=refresh_token`:
+
+| Field | Required |
+|---|---|
+| `grant_type` | `refresh_token` |
+| `refresh_token` | yes |
+| `client_id` | yes |
+| `resource` | no (checked against this API if present) |
+
+**Responses:**
+
+- `200 OK`:
+  ```json
+  { "access_token": "ob_...", "token_type": "Bearer", "expires_in": 3600, "refresh_token": "ob_..." }
+  ```
+  Access tokens last 1 hour, refresh tokens 60 days.
+- `400 Bad Request` (`invalid_request`, `invalid_grant`, or
+  `unsupported_grant_type`) — see the error table in
+  [Authentication](/openbooks-docs/dev/auth/)
+- `500 Internal Server Error` (`server_error`)
+
+```sh
+curl -X POST localhost:38081/oauth/token \
+  -d grant_type=authorization_code -d code=... -d client_id=openbooks-cli \
+  -d redirect_uri=http://127.0.0.1:54213/callback -d code_verifier=... \
+  -d resource=http://localhost:38081
+```
+
+### `POST /oauth/authorize/approve`
+
+Requires a **full cookie session** — the only OAuth route that refuses a
+bearer token, with `403` (not `401`):
+
+```json
+{ "error": "invalid_client", "error_description": "approve a client from the web app, not with a token" }
+```
+
+**Request body** — every `GET /oauth/authorize` query param, plus `approve`:
+
+```json
+{ "client_id": "...", "redirect_uri": "...", "response_type": "code",
+  "code_challenge": "...", "code_challenge_method": "S256",
+  "resource": "...", "state": "...", "approve": true }
+```
+
+**Responses:**
+
+- `200 OK`, `approve: true` — `{ "redirect": "<redirect_uri>?code=...&state=..." }`
+- `200 OK`, `approve: false` — `{ "redirect": "<redirect_uri>?error=access_denied&state=..." }`
+- `400`/`401` — same validation as `GET /oauth/authorize`
+
+Note this is a `200` carrying a redirect target in the body, not an HTTP
+redirect — the target is a loopback listener on the user's own machine.
+
+### `GET /oauth/client_info`
+
+Requires the full tier — a bearer token is accepted here, unlike `approve`.
+
+**Query param:** `client_id`.
+
+**Response `200`:**
+
+```json
+{ "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true }
+```
+
+**Response `401`** (`invalid_client`) — unknown `client_id`.
 
 ## Accounts
 

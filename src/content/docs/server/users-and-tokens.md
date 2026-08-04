@@ -50,12 +50,14 @@ Prints email, WebAuthn passkey count, and when they were last seen:
 
 ```
 email                            passkeys  last seen
-demo@example.com                        0  2026-08-01T12:03:44+00:00
+demo@example.com                        1  2026-08-01T12:03:44+00:00
 ```
 
-Passkey count is always `0` today — the `webauthn_credentials` table exists
-(`openbooks-api/migrations/0004_auth.sql`) but nothing populates it yet, so
-password is the only way in.
+Passkey count reflects `webauthn_credentials`
+(`openbooks-api/migrations/0004_auth.sql`). A password alone is never enough
+to sign in end-to-end any more — see
+[Authentication](/openbooks-docs/dev/auth/) for the second factor and the
+half-session that sits between a password and a full session.
 
 ## Resetting a password
 
@@ -74,6 +76,21 @@ and WebAuthn credential belonging to them cascades away with it
 
 ## Minting a bearer token
 
+A human at a terminal now normally gets a token the same way the web app
+gets a session — by signing in:
+
+```sh
+openbooks-cli auth login
+```
+
+which runs the real OAuth flow (password, then passkey, then consent) and
+stores a 1-hour access token plus a 60-day refresh token; see
+[Authentication](/openbooks-docs/dev/auth/) for the protocol and
+[The CLI](/openbooks-docs/dev/cli/) for where they're stored.
+
+`just mint-token` remains, for the cases that can't run an interactive
+browser flow — a script, `openbooks-api/seed.sh`, and `smoke.sh` all use it:
+
 ```sh
 just mint-token you@example.com
 ```
@@ -84,15 +101,16 @@ Prints a single token, alone, on stdout — meant to be captured:
 export OPENBOOKS_TOKEN=$(just mint-token you@example.com)
 ```
 
-This is how every client except the web app authenticates: `openbooks-cli`
-and `openbooks-desktop` both read `OPENBOOKS_TOKEN` from the environment
-(see [Configuration](/openbooks-docs/server/configuration/)), since neither
-has a login flow yet. The token is minted directly against the database —
-`openbooks-api mint-token <email>` writes a row to `oauth_tokens` rather than
-calling any HTTP endpoint — and is valid for 365 days, prefixed `ob_` so a
-leaked one is recognizable in a log or a paste
-(`openbooks-api/src/auth/token.rs`). Only its SHA-256 digest is stored; the
-raw value is shown once, the same as a generated password.
+`openbooks-cli` and `openbooks-desktop` both still honor `OPENBOOKS_TOKEN`
+from the environment when it's set (see
+[Configuration](/openbooks-docs/server/configuration/)), and it takes
+precedence over any stored `auth login` credential — that's what lets
+`seed.sh` and `smoke.sh` authenticate without a browser. The token is minted
+directly against the database — `openbooks-api mint-token <email>` writes a
+row to `oauth_tokens` rather than calling any HTTP endpoint — and is valid
+for 365 days, prefixed `ob_` so a leaked one is recognizable in a log or a
+paste (`openbooks-api/src/auth/token.rs`). Only its SHA-256 digest is
+stored; the raw value is shown once, the same as a generated password.
 
 ## Session cookie vs. bearer token
 
@@ -120,13 +138,12 @@ header:
 WWW-Authenticate: Bearer resource_metadata="http://localhost:38081/.well-known/oauth-protected-resource"
 ```
 
-That metadata endpoint doesn't exist yet — the header is there so an MCP
-client can eventually discover where to authenticate without being manually
-configured. For now, every client just gets `OPENBOOKS_TOKEN` out of band,
-from `just mint-token`.
-
-See [Authentication](/openbooks-docs/dev/auth/) for the full protocol —
-password backoff, session expiry, and what a future phase adds.
+That metadata endpoint exists now — it's the first of the two `.well-known`
+documents the OAuth authorization server serves, so an MCP client (or
+`openbooks-cli auth login`) can discover where to authenticate without being
+manually configured. See [Authentication](/openbooks-docs/dev/auth/) for the
+full protocol — password backoff, the passkey second factor, and the OAuth
+flow behind that URL.
 
 ## There is no RBAC
 

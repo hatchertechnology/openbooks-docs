@@ -29,6 +29,88 @@ is printed to stderr as `error: <context chain>` and the process exits `1`.
 Success exits `0`. There's no second error code to distinguish "bad input" from
 "API unreachable"; scripts should read stderr for that.
 
+## `auth`
+
+Sign in, check who's signed in, or clear the stored credential. Implemented
+in `openbooks-cli/src/auth.rs`; see [The CLI](/openbooks-docs/dev/cli/) for
+where the tokens live and [Authentication](/openbooks-docs/dev/auth/) for the
+OAuth protocol underneath.
+
+```
+Usage: openbooks-cli auth <login|logout|status|token>
+```
+
+### `auth login`
+
+Runs the loopback PKCE dance against the API's authorization server: binds
+an ephemeral port on `127.0.0.1`, opens a browser at
+`/oauth/authorize?...&redirect_uri=http://127.0.0.1:<port>/callback`, waits
+for exactly one callback, and exchanges the code at `POST /oauth/token`. The
+browser drives you through password + passkey sign-in and the consent
+screen; the terminal just waits.
+
+```console
+$ openbooks-cli auth login
+Opening your browser to sign in…
+Signed in. Credentials are in /home/you/.config/openbooks/credentials.json.
+```
+
+If a browser can't be opened (a headless box over SSH), it prints the URL
+instead of failing:
+
+```console
+$ openbooks-cli auth login
+Opening your browser to sign in…
+Couldn't open a browser. Open this yourself:
+
+http://localhost:38081/oauth/authorize?response_type=code&client_id=openbooks-cli&...
+```
+
+### `auth logout`
+
+Deletes the stored credentials file. Does not call the API — this only
+forgets locally; the token itself is not revoked.
+
+```console
+$ openbooks-cli auth logout
+signed out — stored credentials removed
+```
+
+### `auth status`
+
+Reports who's signed in by calling `GET /auth/me` with the stored access
+token, without touching the refresh token.
+
+```console
+$ openbooks-cli auth status
+signed in as demo@example.com
+
+$ openbooks-cli auth status
+not signed in — run: openbooks auth login
+```
+
+### `auth token`
+
+Prints the stored access token, bare, for scripts:
+
+```console
+$ export TOK=$(openbooks-cli auth token)
+$ curl -H "Authorization: Bearer $TOK" http://localhost:38081/accounts
+```
+
+Fails with `not signed in — run: openbooks auth login` if nothing is stored.
+
+### A 401 refreshes once and retries
+
+Every other subcommand — `accounts`, `balances`, `transactions`, `income`,
+`balance-sheet`, `record` — shares one HTTP client (`openbooks-cli/src/api.rs`)
+that, on a `401` from the API, checks for a stored refresh token and, if
+there is one, exchanges it (`grant_type=refresh_token`) and retries the
+original request exactly **once** with the new access token. If the refresh
+itself fails — the refresh token is also dead — the command reports the same
+"not signed in" hint rather than looping. This retry is silent: a script
+piping `--json` output never sees the intermediate `401`.
+
 ## `accounts`
 
 List every account and its id.
