@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-Three reporting endpoints, all in `openbooks-api/src/main.rs`, all built on one
+Three reporting endpoints, all in `openbooks-api/src/lib.rs`, all built on one
 shared query: `balances()`. That function sums `amount_cents` per account over
 an optional date window, then flips the sign per account kind before anything
 else touches the numbers.

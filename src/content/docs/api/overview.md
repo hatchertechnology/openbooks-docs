@@ -10,8 +10,9 @@ family or club that wants a real ledger — money in, money out, moved between
 accounts — without anyone involved needing to know what "double-entry" means.
 
 The stack is [axum](https://github.com/tokio-rs/axum) on top of Postgres, accessed
-through [sqlx](https://github.com/launchbadge/sqlx). Source lives in
-`openbooks-api/src/main.rs`. An MCP server is mounted alongside the HTTP routes so an
+through [sqlx](https://github.com/launchbadge/sqlx). The router and handlers live in
+`openbooks-api/src/lib.rs`; `src/main.rs` is a thin binary that reads config, runs
+migrations, and calls into it. An MCP server is mounted alongside the HTTP routes so an
 AI assistant can read the books and record transactions the same way the web UI
 does; see [MCP server](/openbooks-docs/api/mcp/).
 
@@ -133,7 +134,7 @@ Handler errors come back as JSON with a single `error` field:
 { "error": "needs 2+ entries summing to zero (got 1 entries summing to 4500)" }
 ```
 
-This is produced by `AppError`'s `IntoResponse` impl in `openbooks-api/src/main.rs`.
+This is produced by `AppError`'s `IntoResponse` impl in `openbooks-api/src/lib.rs`.
 Two things map to `400 Bad Request`:
 
 - The API's own validation (missing name, empty description, unbalanced entries).

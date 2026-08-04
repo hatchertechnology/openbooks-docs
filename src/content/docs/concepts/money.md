@@ -14,7 +14,7 @@ client.
 
 - Postgres: `entries.amount_cents` is `bigint` (`openbooks-api/migrations/0001_init.sql`).
 - The API: every Rust struct that carries an amount uses `i64` for
-  `amount_cents` (`openbooks-api/src/main.rs` — `NewEntry`, `Entry`, `Line`,
+  `amount_cents` (`openbooks-api/src/lib.rs` — `NewEntry`, `Entry`, `Line`,
   and the report structs all agree on this).
 - Over the wire: JSON numbers, but always whole cents — `$45.00` is the
   integer `4500`, never `45.00` or `45.0`.

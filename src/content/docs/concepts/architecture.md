@@ -18,7 +18,7 @@ and MCP, and four different front ends that all talk to that same API.
   interfaces over the same port, `:38081`:
   - Plain HTTP routes — `/accounts`, `/transactions`,
     `/reports/balances`, `/reports/income-statement`,
-    `/reports/balance-sheet` — defined in `openbooks-api/src/main.rs`.
+    `/reports/balance-sheet` — defined in `openbooks-api/src/lib.rs`.
   - An **MCP server** mounted at `/mcp` (Streamable HTTP, `openbooks-api/src/mcp.rs`),
     so an AI assistant can read the books and record transactions the same
     way the web UI does.
@@ -74,7 +74,7 @@ from using `/mcp` too; it's just that today only the agent plugin does.
 The HTTP handlers and the MCP tools in `openbooks-api` are two thin layers
 over the *same* underlying functions — `accounts_data`, `transactions_data`,
 `create_transaction_data`, `account_balances_data`, `income_statement_data`,
-and `balance_sheet_data`, all in `openbooks-api/src/main.rs`. An HTTP route
+and `balance_sheet_data`, all in `openbooks-api/src/lib.rs`. An HTTP route
 handler calls one of these and wraps the result in `Json(...)`; an MCP tool
 call in `openbooks-api/src/mcp.rs` calls the exact same function and wraps
 the result as MCP tool content. Neither layer talks to the database

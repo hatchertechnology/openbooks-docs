@@ -39,7 +39,7 @@ create constraint trigger entries_balanced
 ```
 
 It's `deferrable initially deferred` on purpose: `create_transaction_data` in
-`openbooks-api/src/main.rs` inserts a transaction's entries one row at a
+`openbooks-api/src/lib.rs` inserts a transaction's entries one row at a
 time inside a single database transaction, so the check can only be
 meaningful once every leg has landed — at commit, not after each insert.
 
@@ -51,7 +51,7 @@ it.
 
 ## The API's own check exists only for a friendlier 400
 
-`create_transaction_data` in `openbooks-api/src/main.rs` also checks the sum
+`create_transaction_data` in `openbooks-api/src/lib.rs` also checks the sum
 before it even opens a database transaction:
 
 ```rust
@@ -84,7 +84,7 @@ nobody wants to see "-$500 in dues" on a report that just means "$500 came
 in."
 
 **Where it's enforced:** exactly one function,
-`AccountType::sign()` in `openbooks-api/src/main.rs`:
+`AccountType::sign()` in `openbooks-api/src/lib.rs`:
 
 ```rust
 impl AccountType {
@@ -100,7 +100,7 @@ impl AccountType {
 }
 ```
 
-The `balances()` helper (also in `main.rs`) is the single place every report
+The `balances()` helper (also in `lib.rs`) is the single place every report
 — `/reports/balances`, `/reports/income-statement`, `/reports/balance-sheet`,
 and the MCP tools that wrap them — pulls its numbers from, and it multiplies
 each account's raw ledger sum by `sign()` before anything downstream sees it:

@@ -137,6 +137,8 @@ quietly rounding it. `openbooks-web/test/money.test.ts` covers that and the
 money-direction reasoning; run it with `npm test`.
 
 :::note
-There's no auth and no login screen. Anyone who can reach the page can edit the
-books — deliberate for this POC, not a gap to fix unless asked.
+Signing in is required — `app/middleware/auth.global.ts` redirects anywhere but
+`/login` to the sign-in page until a session cookie resolves. See
+[Authentication](/openbooks-docs/api/auth/) for the credential and what it does and
+doesn't protect against.
 :::
