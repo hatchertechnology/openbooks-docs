@@ -11,6 +11,8 @@ import tuiDashboard from '../assets/tui-dashboard-80.txt?raw';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const repo = 'https://github.com/hatchertechnology/openbooks';
+const canonicalUrl = new URL(`${base}/`, Astro.site);
+const ogImageUrl = new URL(desktopHome.src, Astro.site);
 
 // A real 80x24 pane, which is the smallest the TUI will render — it refuses
 // anything narrower and says so. Drop the empty rows in the middle of the table
@@ -55,11 +57,20 @@ const tracks = [
 			content="Double-entry bookkeeping for a family or club. Keep the books, print the statements for the meeting, and never learn what a debit is."
 		/>
 		<link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+		<link rel="canonical" href={canonicalUrl} />
 		<meta property="og:title" content="OpenBooks" />
 		<meta
 			property="og:description"
 			content="Double-entry bookkeeping for a family or club — a Rust API, a web app, a terminal client, and a native desktop app."
 		/>
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={canonicalUrl} />
+		<meta property="og:image" content={ogImageUrl} />
+		<meta
+			property="og:image:alt"
+			content="The OpenBooks desktop client showing money on hand, a form for recording something, and every account with its balance."
+		/>
+		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="theme-color" content="#0b7a5b" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#0b0d0e" media="(prefers-color-scheme: dark)" />
 		<script is:inline>
@@ -142,7 +153,12 @@ const tracks = [
 							<a href={`${base}/dev/architecture/`}>Developers</a>
 						</div>
 					</details>
-					<button class="nav__theme" type="button" aria-label="Switch between light and dark">
+					<button
+						class="nav__theme"
+						type="button"
+						aria-label="Switch between light and dark"
+						aria-pressed="false"
+					>
 						<svg viewBox="0 0 24 24" aria-hidden="true">
 							<circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"
 							></circle>
@@ -215,8 +231,8 @@ const tracks = [
 					<Image
 						src={desktopHome}
 						alt="The OpenBooks desktop client showing money on hand, a form for recording something, and every account with its balance."
-						widths={[560, 900, 1400]}
-						sizes="(max-width: 60rem) 92vw, 46rem"
+						widths={[560, 900, 1400, 2200]}
+						sizes="(max-width: 60rem) 92vw, 50vw"
 						loading="eager"
 					/>
 					</div>
@@ -354,7 +370,11 @@ const tracks = [
 						<a class="link" href={`${base}/use/terminal/`}>The terminal UI</a>
 					</div>
 					<figure class="client__frame client__frame--term">
-						<pre class="term"><code>{tui}</code></pre>
+						<pre
+							class="term"
+							role="img"
+							aria-label="The terminal client's dashboard tab: Dashboard, History, Reports and Record tabs across the top, money on hand of $7,577.50, and a table of every account with its balance, with a footer of keybindings to switch views, move, refresh, get help, and quit."
+						><code>{tui}</code></pre>
 					</figure>
 				</div>
 
@@ -534,9 +554,12 @@ just user-add you@example.com`}</code></pre>
 		<script is:inline>
 			// The theme toggle writes the key Starlight reads, so the choice survives
 			// the walk from this page into the docs and back.
-			document.querySelector('.nav__theme')?.addEventListener('click', () => {
+			const themeButton = document.querySelector('.nav__theme');
+			themeButton?.setAttribute('aria-pressed', String(document.documentElement.dataset.theme === 'dark'));
+			themeButton?.addEventListener('click', () => {
 				const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
 				document.documentElement.dataset.theme = next;
+				themeButton.setAttribute('aria-pressed', String(next === 'dark'));
 				try {
 					localStorage.setItem('starlight-theme', next);
 				} catch {}

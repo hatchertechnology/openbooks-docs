@@ -17,9 +17,13 @@ Secondary readers, in order: a developer evaluating or running the stack locally
 maintainer using the site as a fast reference for routes, flags, ports, and keybindings across
 five sibling repositories.
 
-The site's current content is weighted the other way around — six sections, of which `api/`,
-`cli/`, and `concepts/` are written for engineers, and only `web/` and `desktop/` speak to the
-treasurer. Future work should treat that imbalance as a known gap, not as the intended shape.
+The site's current content is still weighted the other way around. It is now organized into
+four audience tracks instead of six component sections — `start/`, `use/` for the treasurer,
+`server/` for whoever runs the instance, and `dev/` for engineers — but the page count did not
+follow the reorganisation: `dev/` holds 15 pages against `use/`'s 8, so an engineer reading
+straight through still has nearly twice as much material as a treasurer. `server/`'s 6 pages
+and the shared `start/` track's 3 sit outside that split. Future work should treat the remaining
+imbalance as a known gap, not as the intended shape.
 
 ## Product Purpose
 
@@ -35,8 +39,9 @@ It is judged on three things at once, in this order:
    and staleness is treated as worse than an absent page.
 2. **A front door.** The homepage introduces the project to a first-time visitor; the section
    pages stay a dry, accurate reference.
-3. **Teaching double-entry.** `concepts/` explains the ledger model from the beginning, for
-   readers who are not accountants and never intend to become them.
+3. **Teaching double-entry.** `use/double-entry.md` explains the ledger model from the
+   beginning, for readers who are not accountants and never intend to become them, with the
+   engineering half of the same story in `dev/money.md` and `dev/invariants.md`.
 
 ## Positioning
 
@@ -50,7 +55,7 @@ handing them the vocabulary the product itself refuses to show them.
 
 - Read in a browser, most often while the reader has the app open beside it.
 - The reference sections are consulted mid-task, by search or by sidebar, rather than read
-  front to back. `concepts/` is the exception and is read in sequence.
+  front to back. `use/double-entry.md` is the exception and is read in sequence.
 - Deployed as a GitHub Pages **project** site, so it is served under the `/openbooks-docs`
   base. Astro does not rewrite links inside Markdown, so internal links carry the base and a
   trailing slash themselves.
@@ -66,17 +71,22 @@ handing them the vocabulary the product itself refuses to show them.
 - The sidebar autogenerates per directory; a new page is a file in the right directory, ordered
   with `sidebar: { order: N }` in its frontmatter. Sidebar groups and site config live in
   `astro.config.mjs`.
-- Six sections: `start/`, `concepts/`, `api/`, `web/`, `cli/`, `desktop/`. The agent plugin has
-  no section of its own and is covered inside `concepts/architecture.md`.
-- The homepage (`index.mdx`) uses Starlight's `splash` template with a hero and a card grid.
+- Four content directories, presented as audience tracks with sidebar labels set in
+  `astro.config.mjs`: `start/` ("Start here"), `use/` ("For treasurers"), `server/` ("Running a
+  server"), `dev/` ("For developers"). The agent plugin has no section of its own and is
+  covered inside `dev/architecture.md`.
+- The homepage (`src/pages/index.astro`) is a hand-built Astro page outside Starlight entirely,
+  with its own `<head>`, its own reset and layout, and its own inline scripts. It shares an
+  identity with the Starlight docs shell only through the stylesheets Starlight's `customCss`
+  list loads — the self-hosted Geist fonts and `tokens.css`/`starlight.css` — not through a
+  shared layout.
+- Old six-section URLs (`/web/...`, `/api/...`, `/concepts/...`, and the rest) still resolve:
+  `astro.config.mjs` defines a `movedPages` redirect map, and Astro emits a static redirect page
+  per entry on build.
 - Static output only. No backend, no database, no authenticated area.
 - Terminology to keep straight: the documented product avoids accounting vocabulary in its own
   UI, so pages describing the UI should not introduce it either; pages describing the ledger
   model may and must.
-- **Known content defect, not a design decision:** `index.mdx` still carries an "Early POC"
-  caution stating there is no auth. Authentication is now required — a session cookie for the
-  web app, a bearer token for every other client. There is deliberately no RBAC. Any work
-  touching the homepage must not preserve that claim.
 
 ## Brand Commitments
 

@@ -224,12 +224,26 @@ Prose measure is capped at `68ch` (`--ob-measure`) for section intros and the "W
 copy; individual card/blurb text uses ad hoc `ch` caps (44–46ch) rather than the shared token,
 so the measure token is honored loosely, not universally.
 
-**Responsive behavior** (declared in code, not visually verified, see Open decisions): two
-breakpoints, both max-width, both mobile-first-in-reverse (desktop is the base case):
-- `60rem`: two-column grids (hero, client rows, install) collapse to one column; the
-  hero's off-grid bleeding image frame (`margin-right: calc(50% - 50vw)`) returns to the grid;
-  reversed client rows un-reverse their DOM order and drop the wide-terminal ratio below; section
-  vertical padding steps down one size (`--ob-space-8` to `--ob-space-7`).
+The hero's off-grid image frame (`.hero__frame`) bleeds past the container's right edge so the
+screenshot reads as a window onto the app rather than a card sitting in a column. Its
+`margin-right` is `min(0px, calc(var(--ob-container) / 2 - var(--ob-space-5) - 50vw))`, measured
+against the `1200px` container, never against the grid column the frame itself sits in. An
+earlier version measured it as `calc(50% - 50vw)`, which resolved that `50%` against the hero
+grid's second column instead of the container and overshot the viewport by 243–305px, putting a
+horizontal scrollbar on the front page at every width above `60rem` — verified in Chrome at
+961/1024/1280/1440/1800px, before and after. `html` also carries `overflow-x: clip` (`clip`
+rather than `hidden`, so `.nav` keeps its sticky positioning) as a backstop: the bleed is
+measured in `vw`, which counts the classic scrollbar the client area doesn't have, so it can
+still overshoot by a few px even against the correct base, and the root is where that overflow
+is actually reported.
+
+**Responsive behavior** (rendered and inspected at every listed breakpoint, see Open decisions):
+two breakpoints, both max-width, both mobile-first-in-reverse (desktop is the base case):
+- `60rem`: two-column grids (hero, client rows, install) collapse to one column; the hero's
+  bleeding image frame is reset with a plain `margin-right: 0` in this media block rather than
+  relying on the bleed formula to zero itself out; reversed client rows un-reverse their DOM
+  order and drop the wide-terminal ratio below; section vertical padding steps down one size
+  (`--ob-space-8` to `--ob-space-7`).
 - `46rem`: the nav's inline link list is hidden and its `.nav__menu` disclosure takes over (see
   Navigation); the figure strip's gap tightens; captured terminal type shrinks further to
   `0.58rem`.
@@ -253,6 +267,13 @@ block that was supposed to win, first for `.section`/`.hero`/`.client`/`.term` p
 the mobile nav, which was invisible at every width until its media rule was moved after the
 disclosure markup it targeted. Appending a fix to this file without checking where the media
 blocks sit is how both bugs happened.
+
+**The Container-Not-Column Bleed Rule.** Anything that bleeds past the container edge is
+measured against the container (`--ob-container`), never against a grid column, and `html`
+clips (`overflow-x: clip`) so a `vw` rounding overshoot can never become a page-level
+scrollbar. This is a third scar alongside the Media-Queries-Last Rule, not a new preference:
+the hero frame's bleed formula shipped broken, measuring against the wrong base and putting a
+horizontal scrollbar on the page at every width above `60rem` until it was caught.
 
 ## Elevation & Depth
 
@@ -316,14 +337,36 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
   radius inside it. Added specifically because the captured app screenshots are photographed
   light-themed and stood out as bare white slabs on a dark page; matting them makes every shot
   read as a framed photograph regardless of site theme. Hero and client frames layer
-  `--ob-shadow-lg` / `--ob-shadow` respectively on top of this same `.shot` base.
+  `--ob-shadow-lg` / `--ob-shadow` respectively on top of this same `.shot` base. That layering
+  is a chain of three equal-specificity rules (`.shot`, then `.hero__frame .shot`, then
+  `.client__frame .shot`) declared in that order in `landing.css`; which shadow wins is decided
+  by source order, not by which selector reads more specific, so reordering that block silently
+  changes which frame's shadow shows. It was deliberately left unmerged during a later
+  consolidation pass for exactly that reason — a live trap for the next contributor who touches
+  that file.
+- **Hero image candidates:** the hero `<Image>` declares `sizes="(max-width: 60rem) 92vw, 50vw"`
+  with `widths` up to `2200` (the source PNG's intrinsic width, `2200×1560`), so the browser can
+  pick a candidate that actually matches the frame's rendered width. An earlier `46rem` value
+  understated the real slot — measured at 603–1063 CSS px above the `60rem` breakpoint — and made
+  the browser fetch a candidate too small for the box, so the site's most prominent image
+  rendered soft.
 
 ### Inset Code / Terminal Panels
 - **Style:** `--ob-bg-inset` background, a fixed `#23282b` border regardless of theme (see the
   Always-Dark Panel Rule), `8px` radius, Geist Mono at `0.78rem`. Captured terminal panes
   (`.client__frame--term .term`) share that `0.78rem` at rest and step down to `0.58rem` at the
   `46rem` breakpoint; the in-proof code panel (`.proof .code`) runs smaller still, `0.66rem`, so
-  its quoted trigger fits the column.
+  its quoted trigger fits the column. The `0.78rem` / `1.5` rest-state pair on
+  `.client__frame--term .term` is now the only declaration of that size: the original rule had set
+  `0.62rem` / line-height `1.45`, and the appended fix that followed it at equal specificity
+  overrode both, so the original pair never applied at any viewport. That dead pair has been
+  deleted and the winning values now sit in a single rule.
+- **Accessibility:** the captured 80×24 terminal pane (`.term` inside `.client__frame--term`)
+  carries `role="img"` and a descriptive `aria-label` summarizing what the dashboard shows,
+  because a screen reader would otherwise read every box-drawing glyph in the capture aloud. The
+  second terminal pane — the `curl`/MCP JSON transcript — deliberately does not get this
+  treatment: it is genuine readable content (a request and a real JSON response), not a
+  screenshot standing in for one, so it should be read as text rather than announced as an image.
 - **The proof panel is now one unit.** `.proof__artifact` wraps the code block and the error line
   beneath it (`.code` + `.proof__err`) in a flex column and carries the `margin-top: auto` that
   used to sit on `.code` alone, so all three proof columns still share a bottom baseline with the
@@ -341,6 +384,10 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
   Starlight's own `--sl-nav-height`.
 - **Links:** plain text, `--ob-text-2` at rest, darkening to `--ob-text` on hover, no underline,
   no active-page indicator.
+- **Theme toggle:** the nav's theme button carries `aria-pressed`, initialized from the resolved
+  `data-theme` on page load and updated in the same click handler that writes the
+  `starlight-theme` `localStorage` key, so assistive tech tracks the toggle's actual state
+  instead of treating it as a stateless button.
 - **Mobile menu (`.nav__menu`):** below `46rem` the inline link list is replaced, not just
   hidden, by a script-free `<details>` disclosure holding the same four links: a hamburger
   `summary` (hidden `::-webkit-details-marker`, `2rem` square, same hover/open border treatment
@@ -362,11 +409,12 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
 - Links inside prose underline at `45%` accent opacity and go to full accent color on hover,
   rather than a permanent solid underline.
 - One shared `focus-visible` ring (`2px` solid accent, `2px` offset, `4px` radius) applies
-  identically to links, buttons, summaries, and form controls across both surfaces. The rule now
-  lives in `tokens.css` rather than `starlight.css`, because the landing page never imports
-  `starlight.css` and was falling back to the UA default outline; `starlight.css` still carries
-  an identical copy of the same declaration (see Open decisions). There is exactly one focus
-  treatment in the whole system either way.
+  identically to links, buttons, summaries, and form controls across both surfaces. The rule
+  lives solely in `tokens.css`, because the landing page never imports `starlight.css` and was
+  falling back to the UA default outline. `starlight.css` used to carry an identical, redundant
+  copy of the same declaration; that copy has been deleted, so there is now exactly one
+  declaration as well as exactly one visual treatment. Verified still rendering inside
+  Starlight by keyboard after the removal.
 
 ## Do's and Don'ts
 
@@ -397,34 +445,56 @@ specifically to read as a stronger sequence marker than an ordinary hairline.
   reserved for framed product screenshots and inset code panels (the Frame-Not-Card Rule).
 - **Don't** introduce a second accent color or a tinted/colored shadow. The palette is one
   neutral ramp plus one accent, and shadows stay achromatic (black-based) in both themes.
-- **Don't** assume the light theme or any breakpoint below `60rem` has been rendered and looked
-  at. It hasn't (see Open decisions): the narrow-viewport fixes in this pass were made by reading
-  the cascade and querying the CSSOM in a browser, never by rendering the page at a phone width.
-  Treat new work at those sizes as unverified until someone actually looks at it.
+- **Don't** assume a future change at a narrow breakpoint or in light theme is safe just because
+  this pass rendered and checked both (see Open decisions). That check was a point-in-time
+  inspection, not a standing guarantee — re-verify the same way after touching layout or theme
+  rules, rather than assuming the earlier pass still covers new work.
 
 ## Known inconsistencies / Open decisions
 
-- **Light theme and narrow/mobile breakpoints were never visually rendered during the build.**
-  This pass's cascade fixes (media-query ordering, the mobile nav) were verified by reading the
-  stylesheet's source order and querying the CSSOM in a browser, not by loading the page at a
-  narrow viewport or in light mode and looking at it. Every rule in this document is read from
-  the CSS and markup as written; treat both as unverified, not as validated, until someone
-  actually renders them.
+- **Light theme and narrow/mobile breakpoints have now been rendered and inspected, not just
+  read from the cascade.** Checked in Chrome at 320, 360, 390, 768, 961, 1024, 1280, 1440 and
+  1800px, in both light and dark. Findings: no page-level horizontal overflow at any width (after
+  the hero-bleed fix, see Layout); the `<details>` mobile nav appears below `46rem`, opens, and
+  its panel links measure about 45px tall; the figure strip reflows to a 2×2 grid; the light
+  theme renders correctly throughout. This was a static inspection pass at a point in time, not
+  an ongoing guarantee — treat new work at these sizes as unverified again once it changes
+  anything this pass touched, rather than assuming this check still covers it.
 - **`--ob-bg-sunken` and `--ob-radius-xl` are declared in `tokens.css` for both themes but are
-  never referenced by any selector in `landing.css` or `starlight.css`.** Either a planned
-  surface/shape never got built, or they're intentional headroom for a future component. Not
-  removed here since the token layer is shared infrastructure and pruning it wasn't requested.
-- **The shared `focus-visible` ring is declared twice.** It now lives in `tokens.css` (so the
-  landing page, which never imports `starlight.css`, actually gets it), but `starlight.css` still
-  carries an identical, now-redundant copy of the same rule. Harmless duplication, not a
-  conflict; removable whenever someone touches that file next.
-- **Density: two of the four `.client` rows, and the `.honest` block, still leave a large empty
-  half by construction.** The forward (non-reversed) rows measured roughly 200px of dead column
-  next to the copy; `.honest` leaves about 40% of its row's width empty since it never grew a
-  second column. The two reverse rows were fixed for a different reason (terminal legibility, via
-  the column-ratio inversion) and happen to look less empty as a side effect, not because density
-  was addressed directly. Logged as an open decision, not silently absorbed into the ratio fix.
+  never referenced by any selector in `landing.css` or `starlight.css`.** Still true, checked by
+  grep. Either a planned surface/shape never got built, or they're intentional headroom for a
+  future component. Not removed here since the token layer is shared infrastructure and pruning
+  it wasn't requested.
+- **Density: `.honest` and one of the two forward `.client` rows have closed the empty-half gap
+  this document used to log as open; the other has not been directly confirmed.** `.honest` grew
+  a second column (intro on the left, the two facts and links on the right) instead of leaving
+  about 40% of its row empty. The desktop-app client row's `.offline` definition list now fills
+  what was roughly 200px of dead space beneath its copy with the offline-cache facts. The
+  remaining forward row ("Statements for the meeting") gained no equivalent filler; the
+  `client__frame .shot img` crop was changed to `16/9` specifically so the image stops growing
+  taller than the copy beside it (see the comment above that rule in `landing.css`), which should
+  narrow or close the same gap there, but that row hasn't been measured the way the other two
+  were. The two reverse rows remain fixed for a different reason (terminal legibility, via the
+  column-ratio inversion), which happens to read as less empty as a side effect.
 - **Prose measure is inconsistently tokenized.** `--ob-measure` (`68ch`) is used for some prose
   blocks, while several component blurbs (`.client__text p`, `.install__text p`, `.section__head
   p` is untouched but others) hardcode their own `ch` caps (42–46ch) instead. Not a bug, but the
   measure token is a convention rather than an enforced rule.
+- **Four literal colors sit outside the token layer by intent, for two different reasons.** The
+  inset-panel foreground (`#d7dee2`, the `.code`/`.term` text color) and the inset-panel
+  scrollbar thumb (`#3a4247`) belong to the always-dark code/terminal panels (see the
+  Always-Dark Panel Rule): those panels render dark in both site themes, so a theme-following
+  `--ob-*` token would flip them lighter in light mode and break that rule. The `ERROR` tag on
+  `.proof__err span` (`#c2410c` light, `#f97316` dark) does follow the theme but is still
+  literal, because promoting a second saturated color to the token layer would contradict the
+  One Accent Rule — it is a deliberate one-off, used nowhere else on the site. The mechanical
+  detector that flags undocumented palette entries catches all four; this bullet is the answer
+  to that flag.
+- **Three mono font sizes sit off the documented type ramp (`--ob-text-xs` at `0.75rem` is the
+  smallest named step) by intent.** `0.8rem` on the install command block (`.code--install`) sizes
+  up slightly from the `0.78rem` panel default because it is a real command meant to be read and
+  copied, not a photograph of a terminal. `0.66rem` on the in-proof trigger (`.proof .code`) sizes
+  down specifically so its quoted, unwrappable Postgres trigger fits the column without clipping
+  (the `landing.css` comment above `.code` explains this). `0.58rem` on the captured terminal pane
+  below the `46rem` breakpoint shrinks the same 80-column capture to fit a phone-width column.
+  The mechanical off-ramp detector flags all three; this bullet is the answer to that flag.

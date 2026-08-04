@@ -12,6 +12,11 @@
 html {
 	-webkit-text-size-adjust: 100%;
 	scroll-behavior: smooth;
+	/* The hero frame's bleed is measured in vw, which counts the classic
+	   scrollbar the client area doesn't have, so it can overshoot by a few px.
+	   Clip on the root, where the overflow is actually reported — clip rather
+	   than hidden, so .nav keeps its sticky positioning. */
+	overflow-x: clip;
 }
 
 
@@ -187,9 +192,9 @@ code {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
 	gap: var(--ob-space-8);
-	align-items: center;
-	padding-top: var(--ob-space-9);
-	padding-bottom: var(--ob-space-9);
+	align-items: start;
+	padding-top: var(--ob-space-8);
+	padding-bottom: var(--ob-space-8);
 }
 
 .hero h1 {
@@ -281,7 +286,7 @@ code {
    as a window onto the app rather than a card sitting in a column. */
 .hero__frame {
 	position: relative;
-	margin-right: calc(50% - 50vw);
+	margin-right: min(0px, calc(var(--ob-container) / 2 - var(--ob-space-5) - 50vw));
 }
 .hero__frame img {
 	width: 100%;
@@ -293,8 +298,8 @@ code {
 /* ---------- section scaffolding ---------- */
 
 .section {
-	padding-top: var(--ob-space-9);
-	padding-bottom: var(--ob-space-9);
+	padding-top: var(--ob-space-8);
+	padding-bottom: var(--ob-space-8);
 	border-top: 1px solid var(--ob-border);
 }
 
@@ -478,12 +483,14 @@ code {
 
 /* ---------- clients ---------- */
 
+/* Rows were centring short copy against tall frames and opening dead space
+   under the text. Top-align them and tighten the section rhythm. */
 .client {
 	display: grid;
 	grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
 	gap: var(--ob-space-8);
-	align-items: center;
-	margin-top: var(--ob-space-9);
+	align-items: start;
+	margin-top: var(--ob-space-8);
 }
 .client--reverse .client__text {
 	order: 2;
@@ -505,10 +512,12 @@ code {
 	border-radius: var(--ob-radius-lg);
 	box-shadow: var(--ob-shadow);
 }
+/* The captured pane is 120 columns; small enough to read is the point of it. */
 .client__frame--term .term {
 	margin: 0;
-	font-size: 0.62rem;
-	line-height: 1.45;
+	font-size: 0.78rem;
+	line-height: 1.5;
+	padding: var(--ob-space-5);
 	box-shadow: var(--ob-shadow);
 	white-space: pre;
 }
@@ -602,6 +611,9 @@ code {
 	margin: 0;
 	font-size: 0.8rem;
 	box-shadow: var(--ob-shadow);
+	white-space: pre;
+	overflow-x: auto;
+	overflow-wrap: normal;
 }
 
 /* ---------- where it stands ---------- */
@@ -727,17 +739,6 @@ code {
 	font-size: 0.66rem;
 	padding: var(--ob-space-4) var(--ob-space-4) var(--ob-space-3);
 }
-.code--install {
-	white-space: pre;
-	overflow-x: auto;
-	overflow-wrap: normal;
-}
-/* The captured pane is 120 columns; small enough to read is the point of it. */
-.client__frame--term .term {
-	font-size: 0.78rem;
-	line-height: 1.5;
-	padding: var(--ob-space-5);
-}
 /* Dark inset panels need their own scrollbar or the OS draws a light one across
    the bottom of the frame. */
 .code::-webkit-scrollbar,
@@ -758,23 +759,8 @@ code {
 	scrollbar-width: thin;
 	scrollbar-color: #3a4247 transparent;
 }
-/* Rows were centring short copy against tall frames and opening dead space
-   under the text. Top-align them and tighten the section rhythm. */
-.client {
-	align-items: start;
-	margin-top: var(--ob-space-8);
-}
 .client__text {
 	padding-top: var(--ob-space-2);
-}
-.section {
-	padding-top: var(--ob-space-8);
-	padding-bottom: var(--ob-space-8);
-}
-.hero {
-	align-items: start;
-	padding-top: var(--ob-space-8);
-	padding-bottom: var(--ob-space-8);
 }
 .hero__frame {
 	padding-top: var(--ob-space-2);
