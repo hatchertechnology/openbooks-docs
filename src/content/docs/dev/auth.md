@@ -285,7 +285,7 @@ vocabulary (`oauth::OAuthError`):
 
 | Code | Status | When |
 |---|---|---|
-| `invalid_request` | 400 | missing/malformed params, bad PKCE shape, wrong `resource` |
+| `invalid_request` | 400, and 429 at `MAX_DEVICE_ATTEMPTS` | missing/malformed params, bad PKCE shape, wrong `resource`; the 429 is the device-approval attempts cap below |
 | `invalid_grant` | 400 | code, refresh token, or device code not redeemable, for any reason |
 | `invalid_client` | 401 (403 from `approve`/`device/approve`/`device_info`, see above) | unknown client, or a bearer token where only a session is accepted |
 | `invalid_redirect_uri` | 400 | `POST /oauth/register` given no redirect URIs, or one that isn't loopback `http://` or plain `https://` |
@@ -296,6 +296,11 @@ vocabulary (`oauth::OAuthError`):
 | `expired_token` | 400 | device grant: the ten minutes ran out |
 | `temporarily_unavailable` | 429 | `POST /oauth/register` at `MAX_DYNAMIC_CLIENTS` |
 | `server_error` | 500 | a database error |
+
+A `server_error` says only *"something went wrong on the server"*. The driver's
+own message goes to the API log and nowhere else: `error_description` is
+rendered verbatim by the web app and by `openbooks-cli`, and a failing
+statement would otherwise put table and column names on a treasurer's screen.
 
 Every response from `/oauth/token` — success or error — carries
 `Cache-Control: no-store` (RFC 6749 §5.1): a token must never end up in a
@@ -443,8 +448,15 @@ and the held `device_code` gets exactly one of four outcomes, all `400`:
 
 `slow_down` is measured off `last_polled_at`: one `update ... returning`
 statement reads the *previous* `last_polled_at` (via a CTE evaluated against
-the pre-update snapshot) and stamps a new one atomically, so two concurrent
-polls can't both read a stale timestamp and both escape the check. A client
+the pre-update snapshot) and stamps a new one. The *stamp* is atomic, so no
+poll goes unrecorded — but the read is not mutual exclusion: each statement's
+snapshot is taken before it blocks on the row lock, so two concurrent polls
+can both read the same pre-race timestamp and one extra poll can slip past the
+interval. That's deliberate — `interval` is advice to a conformant client, not
+a rate limiter, and the real bounds on this grant are the ten-minute TTL and
+`MAX_DEVICE_ATTEMPTS`. `last_polled_at` is stamped even when the poll is then
+refused with `slow_down`, so a client that ignores the interval doesn't poll
+for free. A client
 that can't tell `access_denied` from `expired_token` from `authorization_pending`
 ends up polling a declined request until it expires — the CLI's own test,
 `every_polling_outcome_is_handled_distinctly` (`openbooks-cli/src/auth.rs`),
@@ -462,7 +474,14 @@ code. There's nothing left to re-redeem.
 of user codes one browser *session* may fail to find or fail to approve
 before it's cut off. Every failed lookup or failed decision (`device_info`
 finding no pending code, `device_approve` finding no pending code) charges
-one attempt against `sessions.device_attempts`; hitting the cap answers `429
+one attempt against `sessions.device_attempts` — **except** re-approving a code
+this same session already approved, which is answered `204` and charged
+nothing. A double-click on Allow, a re-submitted form, or a stale `/device` tab
+is not a guess, and ten of those would otherwise force a re-sign-in. The
+exemption is scoped to `status = 'approved' and user_id = <the caller>`, a
+state only the session that produced it can reach, so it reveals nothing;
+declining an already-approved code, and every expired or unknown code, still
+costs one. Hitting the cap answers `429
 invalid_request` — *"too many codes tried in this session — sign in
 again"*. It's a **hard cap with no reset**: nothing lowers `device_attempts`
 back down, deliberately — a human types one code, so ten wrong guesses in
@@ -485,7 +504,8 @@ Being unauthenticated, three things bound what it can do:
 
 **1. Which redirect URIs it will accept** (`clients::registerable_redirect_uri`):
 a loopback `http://` URI whose host is the literal address `127.0.0.1` or
-`[::1]`, or an `https://` URI with no userinfo and no fragment. Everything
+`[::1]`, or an `https://` URI with no userinfo — and, either way, no fragment
+and no whitespace. At most five of them per registration. Everything
 else is refused with `400 invalid_redirect_uri`:
 
 - **`localhost` is refused**, deliberately not treated as loopback (same rule
@@ -496,6 +516,11 @@ else is refused with `400 invalid_redirect_uri`:
   stops at the first colon — while a browser actually sends the code to
   `attacker.example`, the real host after the `@`. The check refuses to
   shortcut any authority with `@` in it.
+- **A fragment is refused on loopback too**, not only on `https://`. RFC 6749
+  §3.1.2 forbids one in any redirect URI, and `authorize.rs` appends the code as
+  `{uri}?code=…` — so for `http://127.0.0.1:8976/cb#x` the whole query lands
+  inside the fragment and the loopback listener never receives a code, with
+  nothing for the registrant to diagnose.
 - A custom scheme (a mobile app's private-use scheme, allowed for that case
   under RFC 8252) is refused too: nothing in this project is a mobile app,
   and accepting one here would mean vouching for whatever the OS hands that
@@ -508,7 +533,8 @@ write. Registering past the cap answers `429 temporarily_unavailable`.
 **3. A 24-hour reaper for the ones that registered and never came back**
 (`register::UNUSED_REAP_HOURS`). A client that registers and never
 completes a grant (`first_used_at is null`) is deleted, along with any
-pending device codes referencing it, once it's older than 24 hours — reaped
+any device codes referencing it (all of them, not only pending ones), once
+it's older than 24 hours — reaped
 first on every registration attempt, before the cap is checked, so a table
 full of abandoned rows doesn't deny a real one. `oauth_codes` and
 `oauth_tokens` have no cascade and no matching cleanup here; two `not exists`
@@ -526,8 +552,12 @@ always `"none"`, because every client here is public and can't keep one.
 `ObUnknownClient.vue` shows a warning when a client is **both** dynamic
 **and** has never completed a grant (`client.dynamic && client.first_use`,
 where `first_use` is `first_used_at.is_none()`). Given anonymous
-registration and a self-asserted `client_name` — capped at 60 characters,
-control characters stripped, but otherwise whatever the registering client
+registration and a self-asserted `client_name` — capped at 60 characters, with
+control characters and the Unicode format characters stripped (the bidi
+overrides and isolates `U+202A`–`U+202E` and `U+2066`–`U+2069`, the marks
+`U+200E`/`U+200F`, and the separators `U+2028`/`U+2029`, none of which
+`char::is_control` covers and any of which can reorder what the human reads
+without changing a byte), but otherwise whatever the registering client
 sent — that warning is the last real backstop before an approval. There's no
 RBAC anywhere in this system, so an approved grant is total access to the
 ledger; the one thing standing between a client that registered itself

@@ -56,10 +56,18 @@ entry. The file lives at `$XDG_CONFIG_HOME/openbooks/credentials.json`,
 falling back to `~/.config/openbooks/credentials.json` when
 `XDG_CONFIG_HOME` isn't set, and is written mode `0600` — created with that
 mode directly, never written then `chmod`-ed after, so there's no window
-where it's readable by anyone else. **`OPENBOOKS_NO_KEYRING=1` forces the
-file**, which matters on a headless box over SSH with no Secret Service to
-talk to (precisely the machine the device grant below exists for) and for
-test runs, which must never touch a developer's real login keychain.
+where it's readable by anyone else. The keyring entry is service `openbooks`,
+account `credentials` — the pair to give `security find-generic-password -s
+openbooks -a credentials` on macOS, or `secret-tool` on Linux, if you want to
+confirm for yourself that both clients really do share one entry.
+
+**`OPENBOOKS_NO_KEYRING` forces the file**, which matters on a headless box
+over SSH with no Secret Service to talk to (precisely the machine the device
+grant below exists for) and for test runs, which must never touch a
+developer's real login keychain. It's read as **any non-empty value except
+`0`** — so `=1`, `=true`, and `=false` all disable the keyring, while `=0` and
+an empty value leave it on. Set it or don't; don't try to switch it off with a
+falsy-looking value.
 
 Signing in prints which store it actually used:
 

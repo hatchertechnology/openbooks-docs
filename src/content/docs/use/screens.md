@@ -178,10 +178,9 @@ never reformats what's typed — a person copying `abcd-efgh` off a terminal
 onto a phone shouldn't have to match the server's own `ABCD-EFGH` casing —
 and the API normalises it (`device::normalise`) before the lookup.
 
-Once the code resolves, the page shows the same "is asking to use your
-books" sentence the `/authorize` page does, the same
-[dynamic-client warning](#consent-authorize) when the client is dynamic and
-has never completed a grant, and one warning specific to this page:
+One warning specific to this page shows from the moment the page opens —
+on the entry form as well as after a lookup, because the form is where the
+attack actually lands:
 
 > Only enter a code that software running on your own machine showed you,
 > just now. If somebody sent you this code — in a message, an email, or
@@ -192,10 +191,18 @@ starts the flow and asks the victim to enter the *attacker's* code, so the
 danger isn't who's asking, it's where the code came from — which is exactly
 what this warning names.
 
+Once the code resolves, the page also shows the same "is asking to use your
+books" sentence the `/authorize` page does and the same
+[dynamic-client warning](#consent-authorize) when the client is dynamic and
+has never completed a grant.
+
 Choosing **Allow** or **Don't allow** calls `POST /oauth/device/approve` and
-shows a confirmation in place — there's nothing to redirect to here, since
+shows the outcome in place — there's nothing to redirect to here, since
 the device waiting on the other end finds out by polling
-`POST /oauth/token`, not by this page sending it anywhere.
+`POST /oauth/token`, not by this page sending it anywhere. The outcome is
+announced to a screen reader (`role="status"`, `aria-live="polite"`), because
+the buttons that produced it unmount as it appears and focus falls back to the
+document.
 
 ## Consent (`/authorize`)
 

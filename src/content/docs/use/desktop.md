@@ -36,7 +36,27 @@ if there's no keyring** — the same store `openbooks-cli` uses
 **signing in once on a machine, from either client, signs both in.** The
 app also refreshes the access token *before* it expires rather than waiting
 for a `401` — a frame-driven UI can't retry a request that already failed
-inside that frame, so it renews with a margin instead.
+inside that frame, so it renews with a margin instead. The keyring entry is
+service `openbooks`, account `credentials` — the same pair `openbooks-cli`
+uses, and the one to check with `security find-generic-password -s openbooks -a
+credentials` (macOS) or `secret-tool` (Linux) if you want to see the sharing
+for yourself.
+
+Two rules protect the *other* client's sign-in, since the store is shared:
+
+- **A renewal that can't reach the API doesn't sign you out.** Only a renewal
+  the server actually *refuses* clears the store; a request that never landed
+  leaves it alone and retries about fifteen seconds later. Opening the app
+  offline — which it's built for — never costs you a credential.
+- **The store is re-read just before every renewal**, off the render thread, so
+  if `openbooks-cli` rotated the tokens while the window sat open, the app
+  adopts what the CLI wrote instead of spending the pair it remembers.
+  Presenting a rotated-past token is read as reuse, and the server answers
+  reuse by revoking the whole family — both clients at once.
+
+If a renewal fails, or a fresh sign-in couldn't be saved, the reason is shown
+above whatever screen is open and stays there until it's dealt with, rather than
+disappearing on the next navigation.
 
 **Sign out** lives on the **Settings** screen, not as a nav item — it's
 rare and mildly destructive, so it sits next to the other machine-level
