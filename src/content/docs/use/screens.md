@@ -24,6 +24,10 @@ Touch targets meet the 44px floor under `@media (pointer: coarse)` rather than a
 breakpoint, so a touchscreen laptop gets them at any width while a mouse keeps the
 denser desktop spacing.
 
+The rail's footer carries the theme control, who is signed in, and **Sign out**. Those
+last two used to be a full-width strip above every page, which spent a row of vertical
+space right-aligning two items and stacked a second chrome bar on a phone.
+
 ## Overview (`/`)
 
 File: `openbooks-web/app/pages/index.vue`.
@@ -32,18 +36,34 @@ The home screen *is* the period statement, rather than a grid of summary tiles. 
 to bottom:
 
 1. **A period picker and a link to print** — month, quarter, or year, plus which one.
-2. **Three figures** — money in, money out, and what's left over, each with a
-   proportion bar so the pair is comparable at a glance. The third figure flips to
+   The choice is kept in the URL, as on the statements route, so a period can be
+   bookmarked, sent to someone, survives a reload, and Back undoes a change to it.
+2. **Three figures** — money in, money out, and what's left over. The two bars are
+   proportions of the pair *together*, so a full bar means all of the period's
+   movement went one way; scaled against the larger figure instead, the bigger one
+   would draw a full bar every period and say nothing. The third figure flips to
    "Short by" when more went out than came in.
 3. **The statement** — "Where it came from" and "What it went to" with their
    subtotals, rendered on screen exactly as it prints, closing on a heavier rule
    above the left-over line.
-4. **A rail** — money in and out by month for the last twelve months, then the five
-   most recent entries.
+4. **A rail** — money in and out by month, then the four most recent entries. The
+   chart follows the period picker rather than the clock: a year shows its twelve
+   months, a quarter its three, and a month keeps a trailing year because one bar is
+   not a trend. Its subtitle always names the literal window ("Jul – Sep 2026"), so
+   the bars can never be read as a period they don't cover. Latest stays genuinely
+   latest — one request covers whichever window starts earlier.
 5. **The record bar** — docked across the bottom edge at desktop width so recording
    never costs a navigation. Below `lg` it becomes an ordinary section at the end of
    the page instead, because a fixed bar tall enough for six stacked fields would
-   swallow a phone screen.
+   swallow a phone screen. The page reserves the docked bar's *measured* height plus a
+   gap, so a two-line error message grows the bar and the reservation together instead
+   of letting it cover the closing figure.
+
+Printing this route is not the intended path — **Print statement** goes to
+[Statements](#statements-statements), which carries the balance sheet — but people press
+Cmd-P on the page in front of them, so the overview has its own running head and paper
+masthead. Whatever comes out of the printer says what it is, which period it covers,
+when it was printed, and where the full statement lives.
 
 A brand-new book gets a designed first-run panel here instead of a screen of zeroes.
 See [Reports](/openbooks-docs/use/statements/#first-run) for what it shows and why.
