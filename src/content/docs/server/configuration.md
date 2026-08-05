@@ -45,7 +45,7 @@ rejected — `token::validate` in `src/auth/token.rs` checks the token's
 
 | Variable | Default | Read in | Purpose |
 |---|---|---|---|
-| `OPENBOOKS_API` | `http://localhost:38081` | `openbooks-desktop/src/client.rs`, `openbooks-cli/src/main.rs` | base URL the desktop client and the CLI use for every API request |
+| `OPENBOOKS_API` | `http://localhost:38081` | `openbooks-desktop/src/client.rs`, `openbooks-cli/src/main.rs` | base URL the desktop client and the CLI use for every API request. The desktop client ignores it once an address has been saved on its Settings screen. |
 | `NUXT_PUBLIC_API_BASE` | `http://localhost:38081` | `openbooks-web/nuxt.config.ts` | base URL the web app's browser code uses for every API request |
 | `OPENBOOKS_TOKEN` | none | `openbooks-cli/src/api.rs`, `openbooks-desktop/src/client.rs` | the bearer token attached to every request; empty or unset means unauthenticated |
 

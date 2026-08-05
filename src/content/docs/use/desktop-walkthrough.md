@@ -5,7 +5,7 @@ sidebar:
   order: 5
 ---
 
-The window has a nav bar across the top and one of three screens below it,
+The window has a nav bar across the top and one of four screens below it,
 defined in `openbooks-desktop/src/main.rs` (`chrome`, `nav`) and
 `openbooks-desktop/src/views/`.
 
@@ -14,7 +14,7 @@ defined in `openbooks-desktop/src/main.rs` (`chrome`, `nav`) and
 Always visible. From left to right:
 
 - The "OpenBooks" wordmark.
-- **Home**, **Transactions**, **Reports** — click to switch screens
+- **Home**, **Transactions**, **Reports**, **Settings** — click to switch screens
   (`Msg::Go`). The active screen's button is highlighted.
 - A connection pill: **Connected**, **Syncing…**, or **Offline**, reflecting
   `App::link`.
@@ -123,6 +123,26 @@ Income statement and balance sheet for one calendar year
 Both report cards show "Nothing to show yet" until the first sync for that
 year lands.
 
+## Settings
+
+Where the app looks for the books
+(`openbooks-desktop/src/views/settings.rs`):
+
+- An **Address** field holding the API base URL the app is using right now,
+  prefilled on the first frame from `App::base`.
+- **Save and reconnect** (`Msg::SaveApiUrl`) stores the address on this
+  computer and immediately re-syncs against it. The address is trimmed, a
+  trailing `/` is dropped, and it must start with `http://` or `https://` —
+  anything else is refused in place with a red banner rather than saved
+  (`settings::normalize`). A green banner confirms a successful save.
+- The saved address is read before the first frame on every later launch and
+  takes precedence over `OPENBOOKS_API`, which only decides the address until
+  something is saved here.
+
+The banner on this card reports the save only. A failed *sync* shows in the
+offline banner under the nav, so a bad address doesn't hide the complaint about
+the address you just typed.
+
 ## Interactions in general
 
 - **Keyboard and mouse both work.** Every clickable control (nav buttons, mode
@@ -132,7 +152,7 @@ year lands.
   control draws a blue focus ring, which is deliberately distinct from the
   hover highlight so keyboard focus is never ambiguous. Disabled controls are
   skipped. There are no single-key accelerators or shortcuts.
-- **Text fields** (`Date`, `Amount`, `Description`) are click-to-focus and also
+- **Text fields** (`Date`, `Amount`, `Description`, `Address`) are click-to-focus and also
   reachable by `Tab`, with the usual cursor and text-selection behavior ply
   provides. `Date` is pre-filled with today.
 - **Scrolling** is mouse-wheel/trackpad over the content area below the nav

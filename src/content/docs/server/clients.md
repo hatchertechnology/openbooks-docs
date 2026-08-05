@@ -25,8 +25,10 @@ start time, not anything set on the machine viewing the page.
 
 ## Desktop client
 
-`openbooks-desktop` reads `OPENBOOKS_API` (`openbooks-desktop/src/client.rs`,
-`base_url()`):
+`openbooks-desktop` has a **Settings** screen for this — type the address,
+press **Save and reconnect**, and it's remembered on that computer. Until
+something is saved there, it reads `OPENBOOKS_API`
+(`openbooks-desktop/src/client.rs`, `base_url()`):
 
 ```sh
 OPENBOOKS_API=http://box:38081 just desktop
@@ -37,6 +39,9 @@ or, running `cargo run` directly from `openbooks-desktop/`:
 ```sh
 OPENBOOKS_API=http://box:38081 cargo run
 ```
+
+A saved address wins over the variable, so setting it on a machine that's
+already been pointed somewhere in Settings has no effect.
 
 ## CLI
 

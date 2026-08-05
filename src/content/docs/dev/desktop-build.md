@@ -82,15 +82,23 @@ were caught only by looking.
 
 ## Pointing it at a different API
 
-The desktop client reads the API base URL from the `OPENBOOKS_API` environment
-variable, falling back to `http://localhost:38081` if it's unset
-(`openbooks-desktop/src/client.rs`, `base_url()`):
+Two ways, and the first wins:
 
-```sh
-OPENBOOKS_API=http://box:38081 cargo run
-```
+1. **The Settings screen.** Type the address, press **Save and reconnect**, and
+   it's stored on this computer (`settings.json`, next to the snapshot cache)
+   and read before the first frame on every later launch
+   (`openbooks-desktop/src/settings.rs`).
+2. **`OPENBOOKS_API`**, falling back to `http://localhost:38081`
+   (`openbooks-desktop/src/client.rs`, `base_url()`) — the same mechanism the
+   web app uses:
 
-This is the same mechanism the web app uses to point at a non-default host.
+   ```sh
+   OPENBOOKS_API=http://box:38081 cargo run
+   ```
+
+The environment variable only decides the address while nothing has been saved
+in Settings; a saved address overrides it, because it's the one the person at
+the window chose. Delete `settings.json` to go back to the variable.
 
 ## Other platforms
 

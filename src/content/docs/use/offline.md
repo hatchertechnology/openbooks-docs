@@ -16,7 +16,9 @@ One JSON file, written through ply's cross-platform `Storage` API:
 
 - **Namespace:** `openbooks` (`cache::NAMESPACE`) — this becomes the app data
   directory name.
-- **File:** `snapshot.json` (`cache::FILE`).
+- **File:** `snapshot.json` (`cache::FILE`). The API address saved on the
+  Settings screen lives beside it as `settings.json` (`settings::FILE`), in the
+  same namespace.
 
 Per the project README, on macOS that resolves to
 `~/Library/Application Support/openbooks/snapshot.json`. `Storage` picks the
