@@ -47,13 +47,28 @@ a request with no bearer token gets the `401` described in
 }
 ```
 
-`OPENBOOKS_TOKEN` has to be set in the environment the MCP client launches
-with — get one with `just mint-token you@example.com`. Phase 4 replaces this
-with discovery: the `401`'s `WWW-Authenticate` challenge already points at a
-`.well-known/oauth-protected-resource` metadata document, but that document
-doesn't exist until then, so a phase 1 client still needs `OPENBOOKS_TOKEN`
-configured out-of-band rather than discovering how to authenticate on its
-own.
+`openbooks-agent/.mcp.json` still carries `OPENBOOKS_TOKEN` out-of-band,
+because it's a checked-in config file, not a live client — but **a client
+that discovers its own authentication no longer needs that.** Claude Code is
+the case this was built for: it reads the `401`'s `WWW-Authenticate`
+challenge, fetches `.well-known/oauth-authorization-server`, and — finding
+no client id it already knows — calls `POST /oauth/register`
+([Authentication](/openbooks-docs/dev/auth/#dynamic-client-registration-rfc-7591))
+to get one on the spot. From there it drives the ordinary authorization-code
+flow, opening a browser on first use.
+
+Because that client just registered itself, the consent page it opens will
+carry the "you've never allowed this before" warning
+([Authentication](/openbooks-docs/dev/auth/#dynamic-client-registration-rfc-7591))
+— the name on that page is whatever the client sent as `client_name`, not
+one this server chose. Approving it is still the same total-access grant
+every approval is; there's nothing narrower for a registered-on-the-fly
+client to ask for.
+
+The first tool call is the one that pays for all of this — registration,
+opening a browser, waiting on the consent page — and until that browser tab
+is approved, the call just sits there. That can look like a hang if you
+don't know to expect it; it isn't one.
 
 Talking to it directly needs the same header:
 

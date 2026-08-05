@@ -35,11 +35,18 @@ and MCP, and four different front ends that all talk to that same API.
   build has actually been exercised so far). It caches the last successful
   sync to a local JSON snapshot and goes strictly read-only — no record form,
   no delete buttons — when the API can't be reached, rather than queuing
-  writes for later.
+  writes for later. It's an OAuth client in its own right now, not just a
+  reader of a token minted out-of-band — it signs itself in with the same
+  loopback authorization-code flow `openbooks-cli` uses, and shares that
+  client's credential store.
 - **`openbooks-agent`** — a cross-harness agent plugin (skills, a
   `treasurer` subagent, and slash commands) that drives the API's MCP
   endpoint, so a coding agent or chat assistant can act as the treasurer
-  without ever constructing a debit or a credit itself.
+  without ever constructing a debit or a credit itself. A client that speaks
+  dynamic client registration — Claude Code — never needs `OPENBOOKS_TOKEN`
+  configured by hand: it registers itself against `/oauth/register` the
+  first time it's challenged and drives the ordinary browser-consent flow
+  from there.
 
 ## What talks to what
 

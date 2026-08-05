@@ -157,6 +157,46 @@ API calls: `GET /transactions` with no range, plus the shared `GET /accounts` an
 `GET /reports/balances`. An unknown id renders a "No such account" state rather than
 an error.
 
+## Device (`/device`)
+
+File: `openbooks-web/app/pages/device.vue`.
+
+Not in the sidebar. This is where a person types the code shown to them on
+some *other* device — a CLI over SSH, or anything else with no browser of
+its own — to approve that device signing in. See
+[the device grant](/openbooks-docs/dev/auth/#the-device-grant-rfc-8628) for
+the protocol underneath.
+
+Reached two ways: with a code already filled in
+(`?user_code=ABCD-EFGH`, from `verification_uri_complete` when the other
+device could open a browser itself), which looks the code up immediately; or
+blank, for someone typing a code they were shown on a screen with no
+browser at all.
+
+**A code can be entered in any case, with or without the dash.** The field
+never reformats what's typed — a person copying `abcd-efgh` off a terminal
+onto a phone shouldn't have to match the server's own `ABCD-EFGH` casing —
+and the API normalises it (`device::normalise`) before the lookup.
+
+Once the code resolves, the page shows the same "is asking to use your
+books" sentence the `/authorize` page does, the same
+[dynamic-client warning](#consent-authorize) when the client is dynamic and
+has never completed a grant, and one warning specific to this page:
+
+> Only enter a code that software running on your own machine showed you,
+> just now. If somebody sent you this code — in a message, an email, or
+> over the phone — close this page.
+
+Device-code phishing runs backwards from what people expect: the attacker
+starts the flow and asks the victim to enter the *attacker's* code, so the
+danger isn't who's asking, it's where the code came from — which is exactly
+what this warning names.
+
+Choosing **Allow** or **Don't allow** calls `POST /oauth/device/approve` and
+shows a confirmation in place — there's nothing to redirect to here, since
+the device waiting on the other end finds out by polling
+`POST /oauth/token`, not by this page sending it anywhere.
+
 ## Consent (`/authorize`)
 
 File: `openbooks-web/app/pages/authorize.vue`.
@@ -178,9 +218,19 @@ sentence of consequence:
 
 That sentence is literal, not a simplification for the reader: there is no
 scope system anywhere in OpenBooks, so **Allow** grants exactly the same
-total access any signed-in user already has, nothing narrower. **Don't
-allow** sends the browser back to the client with `error=access_denied` and
-no code. Choosing either calls `POST /oauth/authorize/approve`, which
+total access any signed-in user already has, nothing narrower.
+
+When the client is dynamically registered (see
+[Dynamic client registration](/openbooks-docs/dev/auth/#dynamic-client-registration-rfc-7591))
+and has never completed a grant, the page adds a second warning
+(`ObUnknownClient.vue`) naming that plainly: it registered itself rather
+than shipping with OpenBooks, and the display name above is whatever it
+called itself. Given anonymous registration and no RBAC, that warning — not
+the display name — is the real backstop.
+
+**Don't allow** sends the browser back to the client with
+`error=access_denied` and no code. Choosing either calls
+`POST /oauth/authorize/approve`, which
 requires the full cookie session this page's own middleware already
 demanded to get here, and the response tells the page where to send the
 browser next — a loopback address on the same machine, not a page inside

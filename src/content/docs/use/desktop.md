@@ -21,13 +21,37 @@ tried so far — treat the other targets as theoretically reachable, not verifie
 
 ## Authenticating
 
-Like `openbooks-cli`, the desktop client reads a bearer token from
-`OPENBOOKS_TOKEN` (`openbooks-desktop/src/client.rs`) and sends it as
-`Authorization: Bearer $OPENBOOKS_TOKEN` on every request; without it, every
-call gets a `401`. Get a token with `just mint-token you@example.com` before
-running `just desktop`. There's no `auth login` screen in phase 1 — see
-[Authentication](/openbooks-docs/dev/auth/) — so this is the only way in
-until phase 3.
+The app opens on a **Sign in** screen when nothing is stored, after signing
+out, or after a stored credential the server refuses. **Sign in** opens a
+browser at the OAuth authorization endpoint — the same loopback PKCE flow
+`openbooks-cli auth login` uses — and the screen waits, with a **Start
+over** control if that browser tab was closed or never opened (the wait can
+run up to ten minutes before it gives up on its own). Once the browser
+completes the exchange, the tokens are stored and the app moves past
+sign-in.
+
+**Tokens are stored in the OS keyring, or the mode-`0600` credentials file
+if there's no keyring** — the same store `openbooks-cli` uses
+(`$XDG_CONFIG_HOME/openbooks/credentials.json`, same keyring entry), so
+**signing in once on a machine, from either client, signs both in.** The
+app also refreshes the access token *before* it expires rather than waiting
+for a `401` — a frame-driven UI can't retry a request that already failed
+inside that frame, so it renews with a margin instead.
+
+**Sign out** lives on the **Settings** screen, not as a nav item — it's
+rare and mildly destructive, so it sits next to the other machine-level
+state. Signing out there also signs `openbooks-cli` out, since the store is
+shared.
+
+`OPENBOOKS_TOKEN` still overrides everything, exactly as before: while it's
+set, it's what authenticates every request, and Settings says so and shows
+no sign-out button, since there's nothing stored to sign out of. Settings
+itself stays reachable while signed out, on purpose — it's where the API
+address lives, and locking it away would strand a typo with no way back.
+
+See [Authentication](/openbooks-docs/dev/auth/) for the OAuth protocol
+underneath, and [Command reference](/openbooks-docs/dev/cli-commands/#auth)
+for the equivalent flow in `openbooks-cli`.
 
 ## Stack
 
@@ -62,10 +86,10 @@ behavior:
   recording and deleting are hidden outright rather than queued for later. The
   web app doesn't have an offline mode at all; if the API is down, it simply
   fails.
-- **Fewer screens.** The desktop client has three views — Home, Transactions,
-  Reports (see `openbooks-desktop/src/msg.rs`'s `View` enum and
-  `openbooks-desktop/src/views/`) — a narrower slice of the API than the web
-  app exposes.
+- **Fewer screens.** The desktop client has five views — Sign in, Home,
+  Transactions, Reports, Settings (see `openbooks-desktop/src/msg.rs`'s
+  `View` enum and `openbooks-desktop/src/views/`) — a narrower slice of the
+  API than the web app exposes.
 
 :::note
 There's no accounting vocabulary in either client's UI by design. See the

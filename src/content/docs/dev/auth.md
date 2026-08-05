@@ -22,16 +22,20 @@ Every route sits behind exactly one of three `route_layer`s in `lib.rs`:
 
 | Tier | Middleware | Accepts | Routes |
 |---|---|---|---|
-| Open | none | anything | `GET /health`; `POST /auth/login`, `POST /auth/logout`; the two `.well-known` documents; `GET /oauth/authorize`; `POST /oauth/token` |
+| Open | none | anything | `GET /health`; `POST /auth/login`, `POST /auth/logout`; the two `.well-known` documents; `GET /oauth/authorize`; `POST /oauth/token`; `POST /oauth/device_authorization`; `POST /oauth/register` |
 | Half-session | `require_half_session` | a cookie session at **any** `mfa_complete` | `POST /auth/webauthn/register/begin`, `/register/finish`, `/auth/begin`, `/auth/finish` |
-| Full | `require_user` | a bearer token, **or** a cookie session with `mfa_complete = true` | the ledger (`/accounts`, `/settings`, `/transactions`, `/reports/*`, `/mcp`), `GET /auth/me`, `POST /auth/password`, `GET /auth/passkeys`, `DELETE /auth/passkeys/{id}`, `POST /oauth/authorize/approve`, `GET /oauth/client_info` |
+| Full | `require_user` | a bearer token, **or** a cookie session with `mfa_complete = true` | the ledger (`/accounts`, `/settings`, `/transactions`, `/reports/*`, `/mcp`), `GET /auth/me`, `POST /auth/password`, `GET /auth/passkeys`, `DELETE /auth/passkeys/{id}`, `POST /oauth/authorize/approve`, `GET /oauth/client_info`, `GET /oauth/device_info`, `POST /oauth/device/approve` |
 
 The open tier is open by necessity, not by oversight: login and logout are
 how a session is created and destroyed, the `.well-known` documents are what
 an unconfigured OAuth client reads before it has any credential,
 `GET /oauth/authorize` is reached by a browser that may not be signed in yet,
-and `POST /oauth/token` is authenticated by the authorization code or refresh
-token the caller presents, not by a header or a cookie.
+and `POST /oauth/token` is authenticated by the authorization code, refresh
+token, or device code the caller presents, not by a header or a cookie.
+`POST /oauth/device_authorization` is open for the same reason as
+`/oauth/authorize` — a client calls it before it holds anything — and
+`POST /oauth/register` is open by RFC 7591's own design: registering a client
+happens before that client has any credential to present.
 
 Within the full tier, a few routes narrow further and refuse a bearer token
 even though `require_user` accepted one: `POST /auth/password`,
@@ -124,21 +128,34 @@ one.
   "issuer": "http://localhost:38081",
   "authorization_endpoint": "http://localhost:38081/oauth/authorize",
   "token_endpoint": "http://localhost:38081/oauth/token",
+  "device_authorization_endpoint": "http://localhost:38081/oauth/device_authorization",
+  "registration_endpoint": "http://localhost:38081/oauth/register",
   "response_types_supported": ["code"],
-  "grant_types_supported": ["authorization_code", "refresh_token"],
+  "grant_types_supported": [
+    "authorization_code",
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
   "code_challenge_methods_supported": ["S256"],
   "token_endpoint_auth_methods_supported": ["none"]
 }
 ```
 
-`issuer` and the two endpoint URLs come from `API_ORIGIN` (`canonical_resource()`
+`issuer` and the endpoint URLs come from `API_ORIGIN` (`canonical_resource()`
 — lowercased, no trailing slash). Both documents live at the plain
 `.well-known` path rather than a path-suffixed one, because the issuer here
 has no path component of its own. `token_endpoint_auth_methods_supported:
 ["none"]` is accurate, not a placeholder: every registered client is public
-(loopback, no client secret), and the token endpoint authenticates the
-*request* — by the authorization code plus its PKCE verifier, or by a
-refresh token — never the client.
+(loopback, or dynamically registered with no secret), and the token endpoint
+authenticates the *request* — by the authorization code plus its PKCE
+verifier, by a refresh token, or by a device code — never the client.
+
+**It does not advertise `revocation_endpoint`.** `/oauth/revoke` is phase 5
+and doesn't exist yet (`oauth::authorization_server`'s own doc comment says
+so directly: "Advertise nothing that does not exist — a client that believes
+this document will call what it names"). A client that reads this document
+and tries to revoke a token will find nothing there to call, which is the
+honest state of the server today.
 
 ### `GET /oauth/authorize`
 
@@ -231,8 +248,9 @@ mislead the human whose approval is the real backstop:
 { "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true }
 ```
 
-`dynamic` and `first_use` exist for a not-yet-built "you've never approved
-this client before" warning (phase 4).
+`dynamic` and `first_use` are what drive the consent page's "you've never
+approved this client before" warning — see
+[Dynamic client registration](#dynamic-client-registration-rfc-7591).
 
 ### `POST /oauth/token`
 
@@ -268,9 +286,15 @@ vocabulary (`oauth::OAuthError`):
 | Code | Status | When |
 |---|---|---|
 | `invalid_request` | 400 | missing/malformed params, bad PKCE shape, wrong `resource` |
-| `invalid_grant` | 400 | code or refresh token not redeemable, for any reason |
-| `invalid_client` | 401 (403 from `approve`, see above) | unknown client |
-| `unsupported_grant_type` | 400 | anything but `authorization_code` or `refresh_token` |
+| `invalid_grant` | 400 | code, refresh token, or device code not redeemable, for any reason |
+| `invalid_client` | 401 (403 from `approve`/`device/approve`/`device_info`, see above) | unknown client, or a bearer token where only a session is accepted |
+| `invalid_redirect_uri` | 400 | `POST /oauth/register` given no redirect URIs, or one that isn't loopback `http://` or plain `https://` |
+| `unsupported_grant_type` | 400 | anything but `authorization_code`, `refresh_token`, or the device grant |
+| `authorization_pending` | 400 | device grant: nobody has approved or denied it yet |
+| `slow_down` | 400 | device grant: polling faster than the interval |
+| `access_denied` | 400 | device grant: the human declined it |
+| `expired_token` | 400 | device grant: the ten minutes ran out |
+| `temporarily_unavailable` | 429 | `POST /oauth/register` at `MAX_DYNAMIC_CLIENTS` |
 | `server_error` | 500 | a database error |
 
 Every response from `/oauth/token` — success or error — carries
@@ -362,18 +386,159 @@ first colon — while a browser actually sends the code to
 shortcut any authority with a `@` in it and falls through to exact string
 matching, which rejects that URI outright.
 
+### The device grant (RFC 8628)
+
+Two halves that never meet in one request: a machine that has no browser to
+open (a CLI over SSH, headless, no keyring) polls `/oauth/token` holding a
+`device_code` it never shows anyone, while a human on some *other* device —
+one that does have a browser — approves a `user_code` short enough to read
+aloud. The row in `oauth_device_codes` is the pairing between the two.
+
+**The two open endpoints:**
+
+- **`POST /oauth/device_authorization`** — open, form-encoded, takes
+  `client_id` and `resource`. Allocates a `device_code` (never shown to a
+  human) and a `user_code` (shown to one), and returns:
+  ```json
+  {
+    "device_code": "...",
+    "user_code": "ABCD-EFGH",
+    "verification_uri": "http://localhost:38080/device",
+    "verification_uri_complete": "http://localhost:38080/device?user_code=ABCD-EFGH",
+    "expires_in": 600,
+    "interval": 5
+  }
+  ```
+  `expires_in` is `DEVICE_TTL_SECONDS` — ten minutes, long enough to walk to
+  another device, short enough that an unapproved code stops being guessable
+  soon. `interval` is `POLL_INTERVAL_SECONDS` — five seconds, RFC 8628 §3.5's
+  default, and the floor `slow_down` (below) raises from.
+
+**The user code's alphabet** (`device::ALPHABET`) is `ABCDEFGHJKMNPQRSTVWXYZ23456789`
+— 30 symbols. Six characters are missing on purpose: `I`, `L`, `O`, `U`, `0`,
+and `1` — every character a person is likely to mistype copying a code off
+one screen onto another (`I`/`1`/`L`, `O`/`0`) is simply absent, so there's
+nothing to confuse. A code is typed by hand as `ABCD-EFGH`; `device::normalise`
+strips everything but alphanumerics, upper-cases it, and re-inserts the dash
+at position 4 if the result is 8 characters long — so a code typed lowercase,
+without the dash, or with a stray space still resolves.
+
+**Approving it is session-only, and refuses a bearer token** — `GET
+/oauth/device_info` (looks the code up, for the `/device` page to show who's
+asking) and `POST /oauth/device/approve` (the decision) both require a full
+cookie session and reject a machine credential with the same `403
+invalid_client` shape `authorize::approve` uses, for the same reason: this endpoint's
+whole purpose is turning a human's presence into a machine credential, so a
+machine credential must never be able to drive it.
+
+**Polling `POST /oauth/token`** with `grant_type=urn:ietf:params:oauth:grant-type:device_code`
+and the held `device_code` gets exactly one of four outcomes, all `400`:
+
+| Code | Meaning | What a client should do |
+|---|---|---|
+| `authorization_pending` | nobody has approved or denied it yet | keep polling at the current interval |
+| `slow_down` | polling faster than the interval | add five seconds to the interval and keep polling |
+| `access_denied` | the human pressed "Don't allow" | stop — terminal |
+| `expired_token` | the ten minutes ran out | stop and start over — terminal |
+
+`slow_down` is measured off `last_polled_at`: one `update ... returning`
+statement reads the *previous* `last_polled_at` (via a CTE evaluated against
+the pre-update snapshot) and stamps a new one atomically, so two concurrent
+polls can't both read a stale timestamp and both escape the check. A client
+that can't tell `access_denied` from `expired_token` from `authorization_pending`
+ends up polling a declined request until it expires — the CLI's own test,
+`every_polling_outcome_is_handled_distinctly` (`openbooks-cli/src/auth.rs`),
+exists because getting this wrong is invisible until somebody presses "Don't
+allow" and the client just spins.
+
+**An approved code is single-use because redeeming it deletes the row.** The
+`token` handler's device branch (`token::device_code`) does `delete from
+oauth_device_codes where ... status = 'approved' and client_id = $2` inside a
+transaction and requires exactly one row to have been deleted; a second poll
+after that finds no row and gets `invalid_grant`, the same as any other dead
+code. There's nothing left to re-redeem.
+
+**`MAX_DEVICE_ATTEMPTS` is 10** (`device::MAX_DEVICE_ATTEMPTS`) — the number
+of user codes one browser *session* may fail to find or fail to approve
+before it's cut off. Every failed lookup or failed decision (`device_info`
+finding no pending code, `device_approve` finding no pending code) charges
+one attempt against `sessions.device_attempts`; hitting the cap answers `429
+invalid_request` — *"too many codes tried in this session — sign in
+again"*. It's a **hard cap with no reset**: nothing lowers `device_attempts`
+back down, deliberately — a human types one code, so ten wrong guesses in
+one session isn't a typo pattern, it's automated guessing, and the way out is
+signing in again, which is a fresh session and a fresh budget (a password
+*and* a passkey, not a free retry).
+
+### Dynamic client registration (RFC 7591)
+
+`POST /oauth/register` is unauthenticated — the only unauthenticated *write*
+anywhere in this system. It exists purely because Claude Code speaks DCR
+today; nothing in this project's own clients needs it, since `openbooks-cli`
+and `openbooks-desktop` are rows `0004_auth.sql` inserts, not clients that
+registered themselves over HTTP. The MCP
+specification's current draft already *deprecates* dynamic registration in
+favour of Client ID Metadata Documents, so `register.rs`'s own doc comment
+says this file can be deleted, not maintained, once CIMD is widespread.
+
+Being unauthenticated, three things bound what it can do:
+
+**1. Which redirect URIs it will accept** (`clients::registerable_redirect_uri`):
+a loopback `http://` URI whose host is the literal address `127.0.0.1` or
+`[::1]`, or an `https://` URI with no userinfo and no fragment. Everything
+else is refused with `400 invalid_redirect_uri`:
+
+- **`localhost` is refused**, deliberately not treated as loopback (same rule
+  `redirect_uri_allowed` uses for registered clients) — a hostname can be
+  repointed by a DNS resolver, the literal address can't.
+- **An authority containing `@` is refused.** `http://127.0.0.1:1@attacker.example/callback`
+  parses, under a naive port-stripping split, as host `127.0.0.1` — the split
+  stops at the first colon — while a browser actually sends the code to
+  `attacker.example`, the real host after the `@`. The check refuses to
+  shortcut any authority with `@` in it.
+- A custom scheme (a mobile app's private-use scheme, allowed for that case
+  under RFC 8252) is refused too: nothing in this project is a mobile app,
+  and accepting one here would mean vouching for whatever the OS hands that
+  scheme to.
+
+**2. `MAX_DYNAMIC_CLIENTS` is 20.** A family ledger has a handful of clients;
+the cap is what stops an unauthenticated endpoint from being an unbounded
+write. Registering past the cap answers `429 temporarily_unavailable`.
+
+**3. A 24-hour reaper for the ones that registered and never came back**
+(`register::UNUSED_REAP_HOURS`). A client that registers and never
+completes a grant (`first_used_at is null`) is deleted, along with any
+pending device codes referencing it, once it's older than 24 hours — reaped
+first on every registration attempt, before the cap is checked, so a table
+full of abandoned rows doesn't deny a real one. `oauth_codes` and
+`oauth_tokens` have no cascade and no matching cleanup here; two `not exists`
+guards on the client delete skip a client that (against the odds — a crash
+between minting a code and marking the client used) somehow has one of
+those rows, rather than raising a foreign-key violation that would fail
+*every* registration until someone cleaned the table by hand.
+
+A registered client's id is prefixed `dyn_` (`format!("dyn_{}", random_token())`),
+so it's recognisable at a glance in a log or a `psql` session. **There is no
+client secret, ever** — `token_endpoint_auth_method` in the response is
+always `"none"`, because every client here is public and can't keep one.
+
+**The fourth bound isn't in this file at all: the consent page's warning.**
+`ObUnknownClient.vue` shows a warning when a client is **both** dynamic
+**and** has never completed a grant (`client.dynamic && client.first_use`,
+where `first_use` is `first_used_at.is_none()`). Given anonymous
+registration and a self-asserted `client_name` — capped at 60 characters,
+control characters stripped, but otherwise whatever the registering client
+sent — that warning is the last real backstop before an approval. There's no
+RBAC anywhere in this system, so an approved grant is total access to the
+ledger; the one thing standing between a client that registered itself
+under a flattering name and total access is a human being told, in plain
+words, that nothing has ever approved this client before.
+
 ### What doesn't exist yet
 
 Named as such so nothing here is mistaken for a gap in this documentation
 rather than in the server:
 
-- **The device grant.** `oauth_device_codes` exists as a table already (a
-  phase-4 head start), but no route reads or writes it, and
-  `grant_type=device_code` isn't in the `token` match — it falls through to
-  `unsupported_grant_type`.
-- **`/oauth/register`.** No dynamic client registration. The only clients
-  that exist are the two rows `0004_auth.sql` inserts; a third client is
-  added by hand, in the database, not over HTTP.
 - **`/oauth/revoke`.** No RFC 7009 endpoint. The only way to end a grant
   early today is a password change (`session::delete_all_for_user` +
   `token::revoke_all_for_user`) or `user passwd`/`user rm`, both of which end

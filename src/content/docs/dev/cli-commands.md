@@ -38,6 +38,7 @@ OAuth protocol underneath.
 
 ```
 Usage: openbooks-cli auth <login|logout|status|token>
+Usage: openbooks-cli auth login [--device]
 ```
 
 ### `auth login`
@@ -52,19 +53,50 @@ screen; the terminal just waits.
 ```console
 $ openbooks-cli auth login
 Opening your browser to sign in…
-Signed in. Credentials are in /home/you/.config/openbooks/credentials.json.
+Signed in. Credentials are in the macOS Keychain.
 ```
 
-If a browser can't be opened (a headless box over SSH), it prints the URL
-instead of failing:
+If a browser can't be opened (a headless box over SSH), it falls back to
+the device grant automatically rather than failing:
 
 ```console
 $ openbooks-cli auth login
 Opening your browser to sign in…
-Couldn't open a browser. Open this yourself:
+Couldn't open a browser here — switching to a code you can enter elsewhere.
 
-http://localhost:38081/oauth/authorize?response_type=code&client_id=openbooks-cli&...
+  Go to http://localhost:38080/device and enter this code:
+
+      ABCD-EFGH
+
+  Waiting… (Ctrl-C to stop)
 ```
+
+### `auth login --device`
+
+The device grant (RFC 8628), driven directly rather than as a fallback —
+useful any time there's no browser on this machine at all. `--api`/`OPENBOOKS_API`
+still has to point at the right server, but there's no loopback listener and
+nothing to open here:
+
+```console
+$ openbooks-cli auth login --device
+
+  Go to http://localhost:38080/device and enter this code:
+
+      ABCD-EFGH
+
+  Waiting… (Ctrl-C to stop)
+Signed in. Credentials are in the Secret Service.
+```
+
+`--device` opens a browser as a convenience if one exists (to
+`verification_uri_complete`, which prefills the code), but the instruction
+printed above the wait is the real mechanism — this grant exists for the
+case where no browser can open at all. See
+[the device grant](/openbooks-docs/dev/auth/#the-device-grant-rfc-8628) for
+the four polling outcomes and what each one means for a script watching this
+loop, and [Screens](/openbooks-docs/use/screens/#device-device) for what the
+person on the other end sees.
 
 **`--api`/`OPENBOOKS_API` must match the API's own canonical origin exactly,**
 or the browser shows a raw `400 invalid_request` instead of a sign-in page,

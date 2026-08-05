@@ -13,10 +13,10 @@ The MCP endpoint (`/mcp`) is covered in [MCP server](/openbooks-docs/dev/mcp/).
 
 Every route below, and every report and MCP route, requires a session cookie
 or a bearer token. The only routes open to anyone are `GET /health`,
-`POST /auth/login`/`logout`, the two `.well-known` documents, and
-`GET /oauth/authorize`/`POST /oauth/token` — see [OAuth](#oauth) below. A
-request to anything else with no credential, or an expired or invalid one,
-gets:
+`POST /auth/login`/`logout`, the two `.well-known` documents,
+`GET /oauth/authorize`/`POST /oauth/token`, `POST /oauth/device_authorization`,
+and `POST /oauth/register` — see [OAuth](#oauth) below. A request to anything
+else with no credential, or an expired or invalid one, gets:
 
 ```
 HTTP/1.1 401 Unauthorized
@@ -44,8 +44,8 @@ curl localhost:38081/health
 
 ## OAuth
 
-Four routes need no credential at all, and two need a full cookie session.
-All six are implemented in `openbooks-api/src/oauth/`; see
+Six routes need no credential at all, and four need a full cookie session.
+All ten are implemented in `openbooks-api/src/oauth/`; see
 [Authentication](/openbooks-docs/dev/auth/) for the protocol they implement —
 PKCE, the loopback rule, refresh rotation — this page is just the wire shape.
 
@@ -97,12 +97,131 @@ No params, no auth. Returns:
   "issuer": "http://localhost:38081",
   "authorization_endpoint": "http://localhost:38081/oauth/authorize",
   "token_endpoint": "http://localhost:38081/oauth/token",
+  "device_authorization_endpoint": "http://localhost:38081/oauth/device_authorization",
+  "registration_endpoint": "http://localhost:38081/oauth/register",
   "response_types_supported": ["code"],
-  "grant_types_supported": ["authorization_code", "refresh_token"],
+  "grant_types_supported": [
+    "authorization_code",
+    "refresh_token",
+    "urn:ietf:params:oauth:grant-type:device_code"
+  ],
   "code_challenge_methods_supported": ["S256"],
   "token_endpoint_auth_methods_supported": ["none"]
 }
 ```
+
+No `revocation_endpoint` — `/oauth/revoke` is phase 5 and doesn't exist.
+
+### `POST /oauth/device_authorization`
+
+No auth. **Form-encoded**, not JSON.
+
+**Request body:** `client_id`, `resource` — both required.
+
+**Responses:**
+
+- `200 OK`:
+  ```json
+  {
+    "device_code": "...",
+    "user_code": "ABCD-EFGH",
+    "verification_uri": "http://localhost:38080/device",
+    "verification_uri_complete": "http://localhost:38080/device?user_code=ABCD-EFGH",
+    "expires_in": 600,
+    "interval": 5
+  }
+  ```
+  `expires_in` is 600 seconds (ten minutes); `interval` is the floor for
+  polling `/oauth/token`, five seconds.
+- `400 Bad Request` (`invalid_request`) — `resource` not this API
+- `401 Unauthorized` (`invalid_client`) — unknown `client_id`
+- `500 Internal Server Error` (`server_error`) — could not allocate a unique user code after three tries
+
+```sh
+curl -X POST localhost:38081/oauth/device_authorization \
+  -d client_id=openbooks-cli -d resource=http://localhost:38081
+```
+
+### `POST /oauth/register`
+
+No auth — the only unauthenticated **write** in the system. **JSON**, not
+form-encoded.
+
+**Request body:**
+
+```json
+{ "redirect_uris": ["http://127.0.0.1/callback"], "client_name": "My tool" }
+```
+
+`redirect_uris` is required and non-empty; `client_name` is optional (falls
+back to `"an unnamed client"`, and is otherwise stripped of control
+characters and capped at 60 characters).
+
+**Responses:**
+
+- `201 Created`:
+  ```json
+  {
+    "client_id": "dyn_...",
+    "client_id_issued_at": 1735689600,
+    "client_name": "My tool",
+    "redirect_uris": ["http://127.0.0.1/callback"],
+    "token_endpoint_auth_method": "none",
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"]
+  }
+  ```
+  No client secret is ever issued.
+- `400 Bad Request` (`invalid_redirect_uri`) — no `redirect_uris`, or one
+  that isn't a loopback `http://` URI or a plain `https://` URI (`localhost`,
+  a custom scheme, a fragment, or an authority containing `@` all fail this)
+- `429 Too Many Requests` (`temporarily_unavailable`) — this server already
+  holds its limit of dynamically registered clients (`MAX_DYNAMIC_CLIENTS`,
+  20)
+
+```sh
+curl -X POST localhost:38081/oauth/register -H 'content-type: application/json' \
+  -d '{"redirect_uris": ["http://127.0.0.1/callback"], "client_name": "My tool"}'
+```
+
+### `GET /oauth/device_info`
+
+Requires a **full cookie session** — refuses a bearer token, with `403`
+(`invalid_client`), the same as `POST /oauth/authorize/approve`.
+
+**Query param:** `user_code` — accepted in any case, with or without the dash.
+
+**Responses:**
+
+- `200 OK`:
+  ```json
+  { "client": { "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true }, "expires_in": 480 }
+  ```
+- `400 Bad Request` (`invalid_grant`) — no pending code matches, charges one
+  attempt against the session's guessing budget
+- `403 Forbidden` (`invalid_client`) — a bearer token was presented instead
+  of a session
+- `429 Too Many Requests` (`invalid_request`) — this session has spent all
+  10 of its guesses (`MAX_DEVICE_ATTEMPTS`) and must sign in again
+
+```sh
+curl localhost:38081/oauth/device_info?user_code=ABCD-EFGH -H 'cookie: ...'
+```
+
+### `POST /oauth/device/approve`
+
+Requires a **full cookie session** — refuses a bearer token, same shape as
+above.
+
+**Request body:** `{ "user_code": "...", "approve": true }`.
+
+**Responses:**
+
+- `204 No Content` — approved or denied; approving also marks the client used
+- `400 Bad Request` (`invalid_grant`) — no pending code matches, charges an
+  attempt
+- `403 Forbidden` (`invalid_client`) — a bearer token was presented
+- `429 Too Many Requests` (`invalid_request`) — guessing budget spent
 
 ### `GET /oauth/authorize`
 
@@ -150,6 +269,28 @@ JSON.
 | `client_id` | yes |
 | `resource` | no (checked against this API if present) |
 
+**Request body**, `grant_type=urn:ietf:params:oauth:grant-type:device_code`:
+
+| Field | Required |
+|---|---|
+| `grant_type` | `urn:ietf:params:oauth:grant-type:device_code` |
+| `device_code` | yes |
+| `client_id` | yes |
+| `resource` | no (checked against this API if present) |
+
+The device branch answers one of four codes rather than the single
+`invalid_grant` the other two branches collapse to, because a polling client
+has to tell them apart — see
+[the device grant](/openbooks-docs/dev/auth/#the-device-grant-rfc-8628):
+
+| Code | Status | When |
+|---|---|---|
+| `authorization_pending` | 400 | nobody has approved or denied it yet |
+| `slow_down` | 400 | polling faster than the interval |
+| `access_denied` | 400 | the human declined it — terminal |
+| `expired_token` | 400 | the ten minutes ran out — terminal |
+| `invalid_grant` | 400 | unknown `device_code`, wrong `client_id`, or already claimed |
+
 **Responses:**
 
 - `200 OK`:
@@ -157,9 +298,9 @@ JSON.
   { "access_token": "ob_...", "token_type": "Bearer", "expires_in": 3600, "refresh_token": "ob_..." }
   ```
   Access tokens last 1 hour, refresh tokens 60 days.
-- `400 Bad Request` (`invalid_request`, `invalid_grant`, or
-  `unsupported_grant_type`) — see the error table in
-  [Authentication](/openbooks-docs/dev/auth/)
+- `400 Bad Request` (`invalid_request`, `invalid_grant`,
+  `unsupported_grant_type`, or one of the device-grant codes above) — see the
+  error table in [Authentication](/openbooks-docs/dev/auth/)
 - `500 Internal Server Error` (`server_error`)
 
 ```sh

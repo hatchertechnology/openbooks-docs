@@ -62,8 +62,13 @@ just cli --api http://box:38081 balances
 
 None of these variables carry a credential — they only say where the API is.
 The web app still needs a browser session from signing in at that host's
-`/auth/login`; the desktop client and CLI still need `OPENBOOKS_TOKEN` set to
-a token minted for that same server. See
-[Users and tokens](/openbooks-docs/server/users-and-tokens/) for minting one,
-and [Configuration](/openbooks-docs/server/configuration/) for the full
-variable table.
+`/auth/login`. The desktop client and the CLI sign themselves in now — `auth
+login` for the CLI, the **Sign in** screen for the desktop client — against
+whichever server these variables point them at; neither needs a token
+minted by hand any more, though `OPENBOOKS_TOKEN` still works and still
+overrides everything for both, which is what `just mint-token`, `seed.sh`,
+and `smoke.sh` rely on. See [Authentication](/openbooks-docs/dev/auth/) for
+the OAuth flow both clients drive, [Users and tokens](/openbooks-docs/server/users-and-tokens/)
+for minting a token by hand when that's what you want instead, and
+[Configuration](/openbooks-docs/server/configuration/) for the full variable
+table.

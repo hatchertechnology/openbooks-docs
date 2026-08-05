@@ -97,8 +97,16 @@ single auth migration beats one per phase.
 | `oauth_tokens` | yes | bearer tokens; `token_hash` is the digest, never the raw token; `kind` is `access` or `refresh` (only `access` is minted in phase 1); `resource` is the token's audience; `revoked_at` |
 | `webauthn_credentials` | no | one row per passkey; unused until phase 2 |
 | `webauthn_challenges` | no | in-flight WebAuthn ceremony state; unused until phase 2 |
-| `oauth_codes` | no | authorization codes for the OAuth code grant; unused until phase 4 |
-| `oauth_device_codes` | no | device-flow codes; unused until phase 4 |
+| `oauth_codes` | no | authorization codes for `POST /oauth/authorize/approve`; in use since phase 3, not phase 4 |
+| `oauth_device_codes` | no | device-flow codes ([device grant](/openbooks-docs/dev/auth/#the-device-grant-rfc-8628)); in use since phase 4 |
+
+Phase 4's own migration (`0005_oauth_phase4.sql`) adds one column and one
+index:
+
+| Change | Table | Purpose |
+|---|---|---|
+| `device_attempts` (`int not null default 0`) | `sessions` | the per-session guessing budget for a user code — a hard cap with no reset, see [the device grant](/openbooks-docs/dev/auth/#the-device-grant-rfc-8628) |
+| `oauth_tokens_parent_hash_idx` (index on `parent_hash`) | `oauth_tokens` | `revoke_family`'s recursive family walk was scanning the whole table once per level with no index to use; phase 3 named this residual and this is the migration that fixes it |
 
 Like `sessions.id` and `oauth_tokens.token_hash`, every credential value this
 schema stores is a digest, not the secret itself — the raw session cookie
