@@ -533,7 +533,7 @@ write. Registering past the cap answers `429 temporarily_unavailable`.
 **3. A 24-hour reaper for the ones that registered and never came back**
 (`register::UNUSED_REAP_HOURS`). A client that registers and never
 completes a grant (`first_used_at is null`) is deleted, along with any
-any device codes referencing it (all of them, not only pending ones), once
+device codes referencing it (all of them, not only pending ones), once
 it's older than 24 hours — reaped
 first on every registration attempt, before the cap is checked, so a table
 full of abandoned rows doesn't deny a real one. `oauth_codes` and
