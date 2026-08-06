@@ -41,6 +41,34 @@ Bills` (liability) and `Field Trips` and `Insurance` (expense) — via
 `ensure_account`, which checks for an existing account of that name before
 creating it.
 
+## Two users, so attribution has something to show
+
+`script-auth.sh` creates a second account, `treasurer@example.com`, alongside
+the usual `demo@example.com`. `seed.sh` mints a token for it and posts a
+handful of the transactions above — a donation and a bank charge, not new
+activity — with that token instead of the primary one, so the two names
+appear side by side under "who recorded it" on the Activity page. The amounts
+and dates are unchanged; only which account posted them differs, so the
+report totals do not move.
+
+## Two token states, for Connected programs
+
+`seed.sh` also mints a live labelled token (`demo terminal`) and a second one
+(`demo revoked`) that it immediately revokes through `POST /oauth/revoke`.
+Settings → Connected programs lists the live one. The revoked one never
+appears there — that list is what is currently live — so instead the script
+prints a ready-to-run command that calls the API with the revoked token, to
+demonstrate the call being refused rather than the row being shown.
+
+This corner of the script is **not idempotent** in the way the rest of it is:
+re-running `just seed` mints a new labelled pair rather than replacing the
+old one, because clearing tokens by label needs either a `psql` session (not
+on this machine's `PATH` — Postgres runs in the container) or a session this
+script doesn't have. The labels make the accumulation visible in Connected
+programs, and the phase 5 reaper collects expired tokens on its own. This was
+a deliberate trade-off, not an oversight — everything else the script does
+stays deterministic and idempotent.
+
 ## Deterministic
 
 No randomness and no value derived from the current date. Dues amounts, dates,
