@@ -559,6 +559,7 @@ with each transaction's `entries` ordered by entry id:
     "id": 42,
     "occurred_on": "2026-03-05",
     "description": "Meeting pizza",
+    "created_by_email": "poster@example.com",
     "entries": [
       { "account_id": 7, "account_name": "Food", "amount_cents": 4500 },
       { "account_id": 1, "account_name": "Checking Account", "amount_cents": -4500 }
@@ -566,6 +567,10 @@ with each transaction's `entries` ordered by entry id:
   }
 ]
 ```
+
+`created_by_email` is the authenticated caller who posted the transaction,
+resolved from `transactions.created_by` — null for seeded rows and anything
+posted before phase 5, or if the author has since been deleted.
 
 ```sh
 curl 'localhost:38081/transactions?from=2026-01-01&to=2026-03-31'

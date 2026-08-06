@@ -114,10 +114,14 @@ value and the raw bearer token exist only in the response that issues them
 and in the client that holds them, never in the database.
 
 `transactions` also gains a nullable `created_by uuid references users(id)`.
-It's attribution, not authorization, and **nothing writes it in phase 1** —
-existing and seeded transactions predate users, and populating it needs a
-`CurrentUser` threaded into the transaction handler, which is a phase 5
-tidy-up.
+It's attribution, not authorization: nothing reads it to make a decision, and
+there is still no RBAC. As of phase 5 it's written by `POST /transactions`
+and by the `record_transaction` MCP tool, from the authenticated caller —
+both routes sit behind `require_user`, so a `CurrentUser` is always on hand.
+Seeded transactions and anything posted before phase 5 are null, and stay
+representable rather than backfilled; `GET /transactions` resolves the
+column to an email with a **left** join, so a since-deleted author's
+transactions don't drop out of the ledger.
 
 See [Authentication](/openbooks-docs/dev/auth/) for what actually happens
 with `users`, `sessions`, and `oauth_tokens` — login, backoff, sessions
