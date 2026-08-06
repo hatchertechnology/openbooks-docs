@@ -228,7 +228,8 @@ danger isn't who's asking, it's where the code came from — which is exactly
 what this warning names.
 
 Once the code resolves, the page also shows the same "is asking to use your
-books" sentence the `/authorize` page does and the same
+books" sentence the `/authorize` page does, [where the code would
+go](#consent-authorize), and the same
 [dynamic-client warning](#consent-authorize) when the client is dynamic and
 has never completed a grant.
 
@@ -262,6 +263,15 @@ sentence of consequence:
 That sentence is literal, not a simplification for the reader: there is no
 scope system anywhere in OpenBooks, so **Allow** grants exactly the same
 total access any signed-in user already has, nothing narrower.
+
+Below it, the page also says where an approved grant would send the
+authorization code (`ObRedirectTarget.vue`), read from the client's
+registration rather than the request: "this computer" when every
+registered redirect is a loopback address, or the host itself otherwise.
+A pre-registered client like `openbooks-cli` is always the loopback case.
+A dynamically registered one chose its own redirect host at registration
+time, and that host is the thing worth judging — a client can call itself
+whatever it likes, but it can't relabel where the code goes.
 
 When the client is dynamically registered (see
 [Dynamic client registration](/openbooks-docs/dev/auth/#dynamic-client-registration-rfc-7591))
