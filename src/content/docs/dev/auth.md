@@ -24,7 +24,7 @@ Every route sits behind exactly one of three `route_layer`s in `lib.rs`:
 |---|---|---|---|
 | Open | none | anything | `GET /health`; `POST /auth/login`, `POST /auth/logout`; the two `.well-known` documents; `GET /oauth/authorize`; `POST /oauth/token`; `POST /oauth/device_authorization`; `POST /oauth/register` |
 | Half-session | `require_half_session` | a cookie session at **any** `mfa_complete` | `POST /auth/webauthn/register/begin`, `/register/finish`, `/auth/begin`, `/auth/finish` |
-| Full | `require_user` | a bearer token, **or** a cookie session with `mfa_complete = true` | the ledger (`/accounts`, `/settings`, `/transactions`, `/reports/*`, `/mcp`), `GET /auth/me`, `POST /auth/password`, `GET /auth/passkeys`, `DELETE /auth/passkeys/{id}`, `POST /oauth/authorize/approve`, `GET /oauth/client_info`, `GET /oauth/device_info`, `POST /oauth/device/approve` |
+| Full | `require_user` | a bearer token, **or** a cookie session with `mfa_complete = true` | the ledger (`/accounts`, `/settings`, `/transactions`, `/reports/*`, `/mcp`), `GET /auth/me`, `POST /auth/password`, `GET /auth/passkeys`, `DELETE /auth/passkeys/{id}`, `GET /auth/tokens`, `DELETE /auth/tokens/{id}`, `POST /oauth/authorize/approve`, `GET /oauth/client_info`, `GET /oauth/device_info`, `POST /oauth/device/approve` |
 
 The open tier is open by necessity, not by oversight: login and logout are
 how a session is created and destroyed, the `.well-known` documents are what
@@ -39,7 +39,8 @@ happens before that client has any credential to present.
 
 Within the full tier, a few routes narrow further and refuse a bearer token
 even though `require_user` accepted one: `POST /auth/password`,
-`DELETE /auth/passkeys/{id}`, and `POST /oauth/authorize/approve`. Each is a
+`DELETE /auth/passkeys/{id}`, `DELETE /auth/tokens/{id}`, and
+`POST /oauth/authorize/approve`. Each is a
 credential-issuing or credential-destroying operation, and a bearer token is
 a long-lived machine credential with no second factor behind it — letting
 one perform any of these would turn a leaked token into a way to mint or
@@ -561,10 +562,8 @@ ledger; the one thing standing between a client that registered itself
 under a flattering name and total access is a human being told, in plain
 words, that nothing has ever approved this client before.
 
-### What doesn't exist yet
-
-Named as such so nothing here is mistaken for a gap in this documentation
-rather than in the server:
-
-- **`DELETE /auth/tokens/{id}`.** No per-token revocation and no
-  connected-clients UI to drive one from.
+A user manages their live connections — OAuth grants and minted tokens
+alike — from `GET /auth/tokens` (list) and `DELETE /auth/tokens/{id}`
+(revoke, session only): see
+[Endpoints](/openbooks-docs/dev/endpoints/#get-authtokens) and
+[Users and tokens](/openbooks-docs/server/users-and-tokens/).

@@ -32,6 +32,67 @@ See [Authentication](/openbooks-docs/dev/auth/) for the credential types, the
 `/auth/*` routes, the WebAuthn ceremonies, and the OAuth protocol behind the
 metadata that challenge header points at.
 
+### `GET /auth/tokens`
+
+Lists the calling user's live connections — one row per thing a human would
+call a connection, not per token row (handler `list_tokens`, backed by
+`auth::token::list_connections`). A rotating OAuth grant has exactly one live
+refresh token at a time, and that row *is* the connection; a token from
+`just mint-token` is an access token with no parent and counts the same way.
+Readable by a bearer token, the same as `GET /auth/passkeys` — reading the
+list is attribution, not a credential operation.
+
+**Response `200`** — array of `Connection`:
+
+```json
+[
+  {
+    "id": "3f9c...b2",
+    "client_id": "openbooks-cli",
+    "client_name": "openbooks-cli",
+    "kind": "access",
+    "label": "laptop script",
+    "last_used_at": null,
+    "expires_at": "2026-09-04T12:00:00Z"
+  }
+]
+```
+
+`id` is the row's SHA-256 `token_hash` — not a credential itself, so it's
+safe to show and safe to send back to `DELETE`. `kind` is `access` for a
+minted script token or `refresh` for an OAuth grant's live refresh token.
+
+```sh
+curl localhost:38081/auth/tokens -H "Authorization: Bearer $OPENBOOKS_TOKEN"
+```
+
+### `DELETE /auth/tokens/{id}`
+
+Ends one connection: revokes the named token and everything descended from
+it (`auth::token::revoke_one`, via `oauth::token::revoke_family`) — for a
+refresh token that takes the access token it most recently minted, too, so
+the client stops working immediately rather than for the rest of that hour.
+
+Requires a **full cookie session** — refuses a bearer token with `403`, the
+same reasoning as `POST /auth/password` and `DELETE /auth/passkeys/{id}`: a
+bearer token is a long-lived machine credential with no second factor behind
+it, and letting one disconnect the user's other clients would turn a leak
+into a way to cut the real owner off from everything at once.
+
+**Responses:**
+
+- `204 No Content` — revoked
+- `403 Forbidden` — called with a bearer token instead of a session
+- `404 Not Found` — `{id}` names nothing live belonging to the caller: unknown,
+  someone else's, or already revoked/expired. There's no RBAC, but a `404`
+  here is not a permission check — it's the same "your tokens are your own"
+  fact that scopes every query by the session's `user_id`.
+
+```sh
+curl -X DELETE localhost:38081/auth/tokens/3f9c...b2 \
+  -H "Cookie: ob_session=..."
+```
+
 ## Health
 
 ### `GET /health`

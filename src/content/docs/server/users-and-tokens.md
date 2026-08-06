@@ -112,6 +112,14 @@ for 365 days, prefixed `ob_` so a leaked one is recognizable in a log or a
 paste (`openbooks-api/src/auth/token.rs`). Only its SHA-256 digest is
 stored; the raw value is shown once, the same as a generated password.
 
+A minted token shows up on the web app's settings page as a connection —
+its label, client, and expiry — alongside any OAuth grants the same user
+holds, and can be revoked from there without touching the database:
+`GET /auth/tokens` lists them, `DELETE /auth/tokens/{id}` ends one (see
+[Endpoints](/openbooks-docs/dev/endpoints/#get-authtokens)). Revoking works
+the same way whether the row came from `mint-token` or from a client
+completing the OAuth flow.
+
 ## Session cookie vs. bearer token
 
 Two credential types exist, carried differently:
