@@ -86,7 +86,9 @@ The moment a sync attempt fails, `App.link` becomes `Link::Offline`
   `Link::Online`, and the views don't just disable the write controls — they
   omit them:
   - Home's "Record something" card is replaced entirely by a "Recording is
-    off" note (`views/home.rs::read_only_note`).
+    off" note (`views/home.rs::read_only_note`), whose wording depends on
+    *why* — see [Two reasons it goes read-only](#two-reasons-it-goes-read-only)
+    below.
   - Transactions' per-row **Delete** button isn't rendered at all
     (`views/transactions.rs`).
 
@@ -100,7 +102,46 @@ The moment a sync attempt fails, `App.link` becomes `Link::Offline`
   show yet.") rather than the cached-data banners, and the error reads
   "Can't reach OpenBooks at `<base>`. Nothing cached yet."
 
+## Two reasons it goes read-only
+
+The screen looks the same either way, but the two causes need opposite advice,
+so the app distinguishes them:
+
+- **The API can't be reached.** Waiting fixes it. The banner names the address
+  ("Can't reach OpenBooks at `<base>` — showing the last saved copy."), and
+  Home says "OpenBooks can't be reached, so this is a read-only copy of the
+  books. Recording comes back on its own once the connection does." Which is
+  true — see [Recovering when the API comes back](#recovering-when-the-api-comes-back).
+- **The server refused this computer's access.** Waiting fixes nothing. This is
+  what a **Disconnect** in the web app's Connected programs section does, and
+  what `openbooks-cli auth logout` does to the shared store. The banner reads
+  "Your access to these books was turned off. Sign in again to carry on.", and
+  Home's card says "Your access to these books was turned off, so this is a
+  read-only copy. Sign in again to start recording."
+
+The app tells them apart by the HTTP status: a `401` on a data request means the
+server answered and rejected the credential, which nothing about being offline
+can produce (`client::Failure::is_unauthorized`). A `401` triggers one immediate
+credential re-check — the pre-emptive renewal alone would never notice, because
+a revoked credential's recorded expiry is untouched and still looks healthy.
+That re-check settles it within a frame or two, and the app lands on the
+**Sign in** screen with the reason on it:
+
+- If the store was **cleared** (`openbooks-cli auth logout`): "You've been
+  signed out on this computer. Sign in again to carry on."
+- If the tokens are **still there but dead** (a web-app Disconnect): the app
+  presents the refresh token, the server refuses it, and the store is cleared
+  here too: "Your sign-in has run out. Sign in again to carry on."
+
+A `500`, a `400`, or an unreachable server never take that path — only a `401`
+does, and only when the credential is one of this app's own. Under
+`OPENBOOKS_TOKEN` there is nothing to re-check and nothing to sign into, so a
+`401` there stays an ordinary error.
+
 ## Recovering when the API comes back
+
+This is the *unreachable* case; a revoked credential needs a fresh sign-in
+instead, and no amount of retrying will bring it back.
 
 Nothing special has to happen — the client already polls every frame. Clicking
 **Refresh** (`Msg::Refresh`) or changing the report year (`Msg::SetYear`) both

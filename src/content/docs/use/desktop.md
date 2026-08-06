@@ -58,6 +58,19 @@ If a renewal fails, or a fresh sign-in couldn't be saved, the reason is shown
 above whatever screen is open and stays there until it's dealt with, rather than
 disappearing on the next navigation.
 
+**Access revoked from somewhere else is noticed too.** Renewing early means the
+app isn't waiting on a `401` to *renew* — but a `401` is still the only sign that
+someone turned this computer's access off, from the web app's Connected programs
+section or with `openbooks-cli auth logout`. A revoked credential's recorded
+expiry is untouched, so it looks perfectly healthy and the early renewal never
+fires. So a `401` on a data request asks for one immediate credential re-check,
+which lands the app on **Sign in** saying either "You've been signed out on this
+computer" (the store was cleared) or "Your sign-in has run out" (the tokens were
+still there, and the server refused them). Nothing else takes that path: a `500`,
+a `400`, or an unreachable API all leave the credential alone. See
+[Two reasons it goes read-only](/openbooks-docs/use/offline/#two-reasons-it-goes-read-only)
+for what the screen says in the meantime.
+
 **Sign out** lives on the **Settings** screen, not as a nav item — it's
 rare and mildly destructive, so it sits next to the other machine-level
 state. Signing out there also signs `openbooks-cli` out, since the store is
@@ -102,10 +115,11 @@ behavior:
 - **Local cache.** The desktop client keeps a snapshot of the last successful
   sync on disk and can open with data on screen before it's touched the
   network. The web app has no equivalent — it always talks to the API live.
-- **Strictly read-only when offline.** When the desktop app can't reach the API,
-  recording and deleting are hidden outright rather than queued for later. The
-  web app doesn't have an offline mode at all; if the API is down, it simply
-  fails.
+- **Strictly read-only when offline.** When the desktop app can't reach the API —
+  or when the server refuses its credential — recording and deleting are hidden
+  outright rather than queued for later, and the "Recording is off" card says
+  which of the two it is. The web app doesn't have an offline mode at all; if the
+  API is down, it simply fails.
 - **Fewer screens.** The desktop client has five views — Sign in, Home,
   Transactions, Reports, Settings (see `openbooks-desktop/src/msg.rs`'s
   `View` enum and `openbooks-desktop/src/views/`) — a narrower slice of the
