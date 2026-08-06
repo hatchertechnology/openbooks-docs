@@ -142,8 +142,10 @@ API calls: `GET /accounts` and `GET /reports/balances` on load; the form calls
 
 File: `openbooks-web/app/pages/settings.vue`.
 
-Three sections, none of them per-browser — everyone signed in to these books sees the
-same settings, and can change any of them.
+Three sections. Whose books are these? is shared and not per-user — anyone signed in
+can see and change it, and it changes for everyone. Passkeys and Connected programs
+are each user's own: every query behind them is scoped to the signed-in user's id, so
+nobody sees or manages another user's passkeys or connections.
 
 **Whose books are these?** — the club/personal skin, described in
 [Overview](/openbooks-docs/dev/web/). Stored on the server as `book_style` so the
@@ -168,8 +170,9 @@ API calls: `GET /auth/passkeys` and `GET /auth/tokens` on load. Deleting a passk
 calls `DELETE /auth/passkeys/:id`; disconnecting a program calls
 `DELETE /auth/tokens/:id`, which only a cookie session — never a bearer token — is
 allowed to call, so a leaked machine credential can't cut off the person who owns it.
-Both refetch their list afterwards, including on failure: a program that's already
-gone by the time you click just means someone else got to it first.
+Disconnecting a program refetches the list afterwards whether it succeeded or failed:
+a program that's already gone by the time you click just means someone else got to
+it first.
 
 ## One account (`/accounts/:id`)
 
