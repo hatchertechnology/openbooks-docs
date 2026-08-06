@@ -84,7 +84,10 @@ credential store is shared with `openbooks-desktop`**, same file path, same
 keyring entry, same JSON shape, and `openbooks-desktop` reads it to refresh
 *before* a request fails rather than after, since a frame-driven UI can't
 retry inside one frame. One sign-in on a machine — from either client — signs
-both in; signing out from either signs both out.
+both in; signing out from either signs both out. `openbooks-cli auth logout`
+also revokes the grant at the server (`POST /oauth/revoke`); `openbooks-desktop`'s
+Sign out only clears the shared store, so its settings page is how a human
+ends that grant.
 
 **`OPENBOOKS_TOKEN` still works, and takes precedence when set** — it skips
 the stored file entirely (`api.rs`'s `Client::new`), which is what `seed.sh`,

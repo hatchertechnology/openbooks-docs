@@ -111,8 +111,11 @@ whichever hostname the API was actually started with.
 
 ### `auth logout`
 
-Deletes the stored credentials file. Does not call the API — this only
-forgets locally; the token itself is not revoked.
+Revokes the grant at the server (`POST /oauth/revoke`, with the stored
+refresh token) and then deletes the stored credentials file. Revoking the
+refresh token also revokes the access token it minted. The server call is
+best-effort — an unreachable API still leaves this signed out and the
+credentials file gone.
 
 ```console
 $ openbooks-cli auth logout
