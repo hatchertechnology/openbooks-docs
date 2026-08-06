@@ -143,11 +143,16 @@ Two things map to `400 Bad Request`:
   violation, such as an unknown `account_id`).
 
 Everything else — a real database or server fault — comes back as
-`500 Internal Server Error` with the underlying error message in `error`.
+`500 Internal Server Error` with `error` set to a fixed sentence, "something
+went wrong on the server", and nothing more specific: no table or column
+names, no driver text. The detail is logged server-side (`.dev/api.log`), not
+returned — the web app renders `error` verbatim, and a volunteer treasurer
+should never see a database's internals.
 
 :::note
 The `400` cases above are the ledger's own invariants rejecting bad input, not the
 API guessing. The authoritative check is a Postgres trigger described in
 [Data model](/openbooks-docs/dev/data-model/); the API-level check in `create_transaction_data`
-exists only to return a friendlier message before the trigger would fire.
+exists only to return a friendlier message before the trigger would fire. A `400` message is
+about the caller's own input, and keeps saying so; a `500` is a fault, and stays generic.
 :::
