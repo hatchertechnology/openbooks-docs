@@ -5,9 +5,9 @@ sidebar:
   order: 3
 ---
 
-Six routes, defined by the files in `openbooks-web/app/pages/`. The sidebar in
-`openbooks-web/app/components/ObSidebar.vue` links to five of them under
-plain-English labels; the sixth is reached by clicking an account.
+Seven routes, defined by the files in `openbooks-web/app/pages/`. The sidebar in
+`openbooks-web/app/components/ObSidebar.vue` links to six of them under
+plain-English labels; the seventh is reached by clicking an account.
 
 The sidebar is more than navigation — it carries the live balances (each asset
 account, the total on hand, and anything still owed), so the numbers a treasurer
@@ -137,6 +137,39 @@ Below the form, one card per kind lists the accounts in it with their balances, 
 
 API calls: `GET /accounts` and `GET /reports/balances` on load; the form calls
 `POST /accounts` and refetches.
+
+## Settings (`/settings`)
+
+File: `openbooks-web/app/pages/settings.vue`.
+
+Three sections, none of them per-browser — everyone signed in to these books sees the
+same settings, and can change any of them.
+
+**Whose books are these?** — the club/personal skin, described in
+[Overview](/openbooks-docs/dev/web/). Stored on the server as `book_style` so the
+desktop and terminal clients read the same answer.
+
+**Passkeys** — the second factor allowed on this account. **Add another passkey**
+enrols one from whatever device the browser is running on; each existing one shows
+when it was added and last used, with a **Delete** that's refused if it's the only
+one left, so removing them can't lock the account out entirely.
+
+**Connected programs** — every live client credential: a signed-in browser session,
+a rotating OAuth grant like `openbooks-cli auth login`, or a token minted with
+`openbooks-api mint-token`. A rotating grant shows as its current refresh token; a
+minted token shows as an access token with whatever label it was given. Each row
+names the client, its label if it has one, when it was last used, and when it
+expires. **Disconnect** asks for confirmation, then ends that connection
+immediately — the next request it makes fails rather than succeeding until it
+happens to expire. Nothing about the client is deleted, so it can sign in again
+afterwards if it's still wanted.
+
+API calls: `GET /auth/passkeys` and `GET /auth/tokens` on load. Deleting a passkey
+calls `DELETE /auth/passkeys/:id`; disconnecting a program calls
+`DELETE /auth/tokens/:id`, which only a cookie session — never a bearer token — is
+allowed to call, so a leaked machine credential can't cut off the person who owns it.
+Both refetch their list afterwards, including on failure: a program that's already
+gone by the time you click just means someone else got to it first.
 
 ## One account (`/accounts/:id`)
 
