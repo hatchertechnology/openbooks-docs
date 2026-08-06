@@ -118,10 +118,13 @@ It's attribution, not authorization: nothing reads it to make a decision, and
 there is still no RBAC. As of phase 5 it's written by `POST /transactions`
 and by the `record_transaction` MCP tool, from the authenticated caller —
 both routes sit behind `require_user`, so a `CurrentUser` is always on hand.
-Seeded transactions and anything posted before phase 5 are null, and stay
-representable rather than backfilled; `GET /transactions` resolves the
-column to an email with a **left** join, so a since-deleted author's
-transactions don't drop out of the ledger.
+Anything posted before phase 5 is null, and stays representable rather than
+backfilled — every *seeded* transaction has an author, because every path
+that writes one now authenticates. `GET /transactions` resolves the column to
+an email with a **left** join, so a since-deleted author's transactions don't
+drop out of the ledger. The column has no `on delete` action, so becoming a
+since-deleted author is the job of `user rm`, which nulls it for that user's
+rows in the same database transaction as the delete.
 
 See [Authentication](/openbooks-docs/dev/auth/) for what actually happens
 with `users`, `sessions`, and `oauth_tokens` — login, backoff, sessions

@@ -112,7 +112,9 @@ stored anywhere and can't be shown again, so write it down or pipe a
 password in with `--password -` (reads one line from stdin). `user passwd`
 and `user rm` (via the cascading foreign keys in `0004_auth.sql`) end every
 existing session and revoke every token for that user, the same as a
-self-service password change through `POST /auth/password`.
+self-service password change through `POST /auth/password`. `user rm` also
+nulls `transactions.created_by` for that user's rows — attribution doesn't
+cascade, so the transactions stay in the ledger and only the name goes.
 
 From the repo root, `just` wraps these so you don't need `DATABASE_URL` set
 by hand:

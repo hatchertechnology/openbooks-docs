@@ -51,6 +51,12 @@ appear side by side under "who recorded it" on the Activity page. The amounts
 and dates are unchanged; only which account posted them differs, so the
 report totals do not move.
 
+**Every seeded transaction has an author**, one of those two. There is no
+unattributed sample row, and there can't be: every path that writes a
+transaction now authenticates, so a null `created_by` is only reachable by a
+row posted before phase 5 or one whose author has since been removed with
+`user rm`.
+
 ## Two token states, for Connected programs
 
 `seed.sh` also mints a live labelled token (`demo terminal`) and a second one

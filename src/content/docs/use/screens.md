@@ -101,8 +101,11 @@ At desktop width the table owns its own scroll and the header stays put, which i
 what keeps it readable at hundreds of rows.
 
 Each row shows the date, description, a "where it moved" summary built client-side as
-`"<destination> ← <source>"`, the amount, and Edit / Delete. The description line shows
-who recorded it when that is known; sample data has no author. Delete opens a
+`"<destination> ← <source>"`, the amount, and Edit / Delete. The "where it moved"
+cell also shows who recorded it when that is known — under the summary, not beside
+the description, because the description cell is the row's header and a screen
+reader would otherwise read the author's address out on every cell in the row.
+Sample data is all attributed, to two different people. Delete opens a
 confirmation naming the entry and its amount; Edit opens the edit dialog described in
 [Recording money](/openbooks-docs/use/recording-money/#editing-an-entry).
 
@@ -157,9 +160,10 @@ enrols one from whatever device the browser is running on; each existing one sho
 when it was added and last used, with a **Delete** that's refused if it's the only
 one left, so removing them can't lock the account out entirely.
 
-**Connected programs** — every live client credential: a signed-in browser session,
-a rotating OAuth grant like `openbooks-cli auth login`, or a token minted with
-`openbooks-api mint-token`. A rotating grant shows as its current refresh token; a
+**Connected programs** — every live client credential: a rotating OAuth grant like
+`openbooks-cli auth login`, or a token minted with `openbooks-api mint-token`.
+Browser sessions are not listed — the list reads `oauth_tokens`, and a signed-in
+browser lives in `sessions`. A rotating grant shows as its current refresh token; a
 minted token shows as an access token with whatever label it was given. Each row
 names the client, its label if it has one, when it was last used, and when it
 expires. **Disconnect** asks for confirmation, then ends that connection

@@ -74,6 +74,13 @@ just future logins.
 and WebAuthn credential belonging to them cascades away with it
 (`on delete cascade` in `openbooks-api/migrations/0004_auth.sql`).
 
+**Their transactions stay.** `transactions.created_by` is attribution, not
+ownership, and it is *not* a cascade — `user rm` sets it to null for that
+user's rows in the same database transaction as the delete, so the ledger
+keeps every entry and loses only the name. The command says how many it
+detached. Without that step the delete would be refused outright for anyone
+who has ever posted, since the column has no `on delete` action.
+
 ## Minting a bearer token
 
 A human at a terminal now normally gets a token the same way the web app

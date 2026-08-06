@@ -569,8 +569,9 @@ with each transaction's `entries` ordered by entry id:
 ```
 
 `created_by_email` is the authenticated caller who posted the transaction,
-resolved from `transactions.created_by` — null for seeded rows and anything
-posted before phase 5, or if the author has since been deleted.
+resolved from `transactions.created_by` — null for anything posted before
+phase 5, or if the author has since been deleted. Seeded transactions all
+have one.
 
 ```sh
 curl 'localhost:38081/transactions?from=2026-01-01&to=2026-03-31'
