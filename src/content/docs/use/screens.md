@@ -101,7 +101,8 @@ At desktop width the table owns its own scroll and the header stays put, which i
 what keeps it readable at hundreds of rows.
 
 Each row shows the date, description, a "where it moved" summary built client-side as
-`"<destination> ← <source>"`, the amount, and Edit / Delete. Delete opens a
+`"<destination> ← <source>"`, the amount, and Edit / Delete. The description line shows
+who recorded it when that is known; sample data has no author. Delete opens a
 confirmation naming the entry and its amount; Edit opens the edit dialog described in
 [Recording money](/openbooks-docs/use/recording-money/#editing-an-entry).
 
