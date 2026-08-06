@@ -128,6 +128,34 @@ with `users`, `sessions`, and `oauth_tokens` — login, backoff, sessions
 expiring on a fixed horizon, and tokens being revoked wholesale on a password
 change.
 
+## An hourly sweep deletes what has expired
+
+`openbooks-api/src/oauth/reap.rs` runs once an hour, spawned from `main.rs`
+on the serve path only — an admin command never starts it, and `cargo test`'s
+per-test router never sees it either. Five plain deletes, no transaction
+around them, each scoped by `expires_at`:
+
+| Table | Deleted once |
+|---|---|
+| `oauth_codes` | 24 hours past `expires_at` (kept a day so `consumed_at` is still visible to someone reading the database) |
+| `oauth_device_codes` | past `expires_at`, any status |
+| `oauth_tokens` | 7 days past `expires_at` |
+| `sessions` | past `expires_at` |
+| `webauthn_challenges` | past `expires_at` |
+
+**The predicate is expiry, never revocation.** Reuse detection walks
+`oauth_tokens.parent_hash` downward from whatever token a caller presents, so
+the row it starts at has to exist. A revoked-but-unexpired token is
+load-bearing: deleting it early would turn a replay into a plain
+unknown-token `400` and skip the family revocation that caps a stolen token
+at one use. The seven-day grace period only affects how late a *theft* can
+still be caught after the token itself has aged out — it changes nothing
+about whether a revoked token is deletable.
+
+No lock, and two API processes reaping at the same time is fine — every
+delete is idempotent and scoped by timestamp, so the worst case is redundant
+work, never wrong data.
+
 ## Money is integer cents
 
 `amount_cents` is a `bigint`. There are no floating-point amounts anywhere in
