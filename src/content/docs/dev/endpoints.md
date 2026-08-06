@@ -15,7 +15,8 @@ Every route below, and every report and MCP route, requires a session cookie
 or a bearer token. The only routes open to anyone are `GET /health`,
 `POST /auth/login`/`logout`, the two `.well-known` documents,
 `GET /oauth/authorize`/`POST /oauth/token`, `POST /oauth/device_authorization`,
-and `POST /oauth/register` — see [OAuth](#oauth) below. A request to anything
+`POST /oauth/register`, and `POST /oauth/revoke` — see [OAuth](#oauth) below.
+A request to anything
 else with no credential, or an expired or invalid one, gets:
 
 ```
@@ -99,6 +100,7 @@ No params, no auth. Returns:
   "token_endpoint": "http://localhost:38081/oauth/token",
   "device_authorization_endpoint": "http://localhost:38081/oauth/device_authorization",
   "registration_endpoint": "http://localhost:38081/oauth/register",
+  "revocation_endpoint": "http://localhost:38081/oauth/revoke",
   "response_types_supported": ["code"],
   "grant_types_supported": [
     "authorization_code",
@@ -109,8 +111,6 @@ No params, no auth. Returns:
   "token_endpoint_auth_methods_supported": ["none"]
 }
 ```
-
-No `revocation_endpoint` — `/oauth/revoke` is phase 5 and doesn't exist.
 
 ### `POST /oauth/device_authorization`
 
@@ -308,6 +308,33 @@ curl -X POST localhost:38081/oauth/token \
   -d grant_type=authorization_code -d code=... -d client_id=openbooks-cli \
   -d redirect_uri=http://127.0.0.1:54213/callback -d code_verifier=... \
   -d resource=http://localhost:38081
+```
+
+### `POST /oauth/revoke`
+
+RFC 7009. No auth — presenting the token *is* the authentication, the same as
+`POST /oauth/token`. **Form-encoded**, not JSON.
+
+**Request body:**
+
+| Field | Required |
+|---|---|
+| `token` | yes |
+| `token_type_hint` | no (accepted and ignored — the hash finds the row whichever kind it is) |
+| `client_id` | no (scopes the revocation to that client; a mismatch revokes nothing but still answers `200`) |
+
+Revoking a refresh token also revokes the access tokens it minted (RFC 7009's
+"descendants"). Revoking an access token leaves its refresh token alone.
+
+**Responses:**
+
+- `200 OK`, empty body, `Cache-Control: no-store` — success, and also an
+  unknown, expired, or already-revoked token (RFC 7009 §2.2: the caller asked
+  for it to be invalid, and it is — answering `404` would make this an oracle
+  for guessing token values)
+
+```sh
+curl -X POST localhost:38081/oauth/revoke -d token=ob_...
 ```
 
 ### `POST /oauth/authorize/approve`

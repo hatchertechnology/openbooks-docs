@@ -130,6 +130,7 @@ one.
   "token_endpoint": "http://localhost:38081/oauth/token",
   "device_authorization_endpoint": "http://localhost:38081/oauth/device_authorization",
   "registration_endpoint": "http://localhost:38081/oauth/register",
+  "revocation_endpoint": "http://localhost:38081/oauth/revoke",
   "response_types_supported": ["code"],
   "grant_types_supported": [
     "authorization_code",
@@ -150,12 +151,8 @@ has no path component of its own. `token_endpoint_auth_methods_supported:
 authenticates the *request* — by the authorization code plus its PKCE
 verifier, by a refresh token, or by a device code — never the client.
 
-**It does not advertise `revocation_endpoint`.** `/oauth/revoke` is phase 5
-and doesn't exist yet (`oauth::authorization_server`'s own doc comment says
-so directly: "Advertise nothing that does not exist — a client that believes
-this document will call what it names"). A client that reads this document
-and tries to revoke a token will find nothing there to call, which is the
-honest state of the server today.
+`revocation_endpoint` is advertised as of phase 5: `POST /oauth/revoke`,
+RFC 7009, exists — see [Endpoints](/openbooks-docs/dev/endpoints/#post-oauthrevoke).
 
 ### `GET /oauth/authorize`
 
@@ -569,9 +566,5 @@ words, that nothing has ever approved this client before.
 Named as such so nothing here is mistaken for a gap in this documentation
 rather than in the server:
 
-- **`/oauth/revoke`.** No RFC 7009 endpoint. The only way to end a grant
-  early today is a password change (`session::delete_all_for_user` +
-  `token::revoke_all_for_user`) or `user passwd`/`user rm`, both of which end
-  *everything* for that user, not one client's grant.
 - **`DELETE /auth/tokens/{id}`.** No per-token revocation and no
   connected-clients UI to drive one from.
