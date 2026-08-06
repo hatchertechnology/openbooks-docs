@@ -256,7 +256,7 @@ Requires a **full cookie session** — refuses a bearer token, with `403`
 
 - `200 OK`:
   ```json
-  { "client": { "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true }, "expires_in": 480 }
+  { "client": { "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true, "redirect_uris": ["http://127.0.0.1/callback"] }, "expires_in": 480 }
   ```
 - `400 Bad Request` (`invalid_grant`) — no pending code matches, charges one
   attempt against the session's guessing budget
@@ -433,8 +433,10 @@ Requires the full tier — a bearer token is accepted here, unlike `approve`.
 **Response `200`:**
 
 ```json
-{ "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true }
+{ "id": "openbooks-cli", "name": "openbooks-cli", "dynamic": false, "first_use": true, "redirect_uris": ["http://127.0.0.1/callback"] }
 ```
+
+`redirect_uris` is the registered host where an approved grant would send the authorization code — the consent surface renders this so the approver can verify the destination.
 
 **Response `401`** (`invalid_client`) — unknown `client_id`.
 
