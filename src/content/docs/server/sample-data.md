@@ -45,7 +45,7 @@ creating it.
 
 `script-auth.sh` creates a second account, `treasurer@example.com`, alongside
 the usual `demo@example.com`. `seed.sh` mints a token for it and posts a
-handful of the transactions above — a donation and a bank charge, not new
+handful of the transactions above — two donations and a bank charge, not new
 activity — with that token instead of the primary one, so the two names
 appear side by side under "who recorded it" on the Activity page. The amounts
 and dates are unchanged; only which account posted them differs, so the
